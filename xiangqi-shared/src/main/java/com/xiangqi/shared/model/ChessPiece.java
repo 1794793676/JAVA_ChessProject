@@ -54,7 +54,7 @@ public abstract class ChessPiece implements Serializable {
      */
     public boolean isRed() {
         // This is a placeholder - actual implementation will depend on how we identify red/black players
-        return owner.getPlayerId().endsWith("_red");
+        return owner.getPlayerId().startsWith("red");
     }
     
     /**

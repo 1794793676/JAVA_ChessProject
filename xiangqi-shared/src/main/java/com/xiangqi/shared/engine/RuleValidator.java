@@ -138,7 +138,7 @@ public class RuleValidator {
     /**
      * Checks if making a move would leave the player's own general in check.
      */
-    private boolean wouldLeaveGeneralInCheck(Move move, GameState state) {
+    public boolean wouldLeaveGeneralInCheck(Move move, GameState state) {
         // Create a temporary state with the move applied
         GameState tempState = state.copy();
         

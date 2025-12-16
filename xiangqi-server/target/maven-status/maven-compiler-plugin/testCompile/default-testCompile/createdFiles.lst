@@ -1,0 +1,3 @@
+com\xiangqi\server\network\ConcurrentConnectionPropertyTest.class
+com\xiangqi\server\network\GameServerTest.class
+com\xiangqi\server\network\ConcurrentConnectionPropertyTest$ConnectionResult.class

@@ -7,15 +7,15 @@ import com.xiangqi.shared.network.NetworkMessage;
 import java.util.List;
 
 /**
- * Message containing the list of online players.
+ * Message containing the list of players in response to a player list request.
  */
 public class PlayerListResponseMessage extends NetworkMessage {
     private static final long serialVersionUID = 1L;
     
     private final List<Player> players;
     
-    public PlayerListResponseMessage(List<Player> players) {
-        super(MessageType.PLAYER_LIST_RESPONSE, null); // Server message
+    public PlayerListResponseMessage(String senderId, List<Player> players) {
+        super(MessageType.PLAYER_LIST_RESPONSE, senderId);
         this.players = players;
     }
     

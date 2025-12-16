@@ -46,4 +46,11 @@ public interface GameEventListener {
     default void onInvalidMoveAttempted(Move move, String reason) {
         // Default empty implementation
     }
+    
+    /**
+     * Called when the game state becomes corrupted and cannot be recovered.
+     */
+    default void onGameStateCorrupted(String reason) {
+        // Default empty implementation
+    }
 }

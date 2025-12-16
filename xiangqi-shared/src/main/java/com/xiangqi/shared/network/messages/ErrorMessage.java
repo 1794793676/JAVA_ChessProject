@@ -25,4 +25,11 @@ public class ErrorMessage extends NetworkMessage {
     public String getErrorDescription() {
         return errorDescription;
     }
+    
+    /**
+     * Alias for getErrorDescription for compatibility.
+     */
+    public String getErrorMessage() {
+        return errorDescription;
+    }
 }

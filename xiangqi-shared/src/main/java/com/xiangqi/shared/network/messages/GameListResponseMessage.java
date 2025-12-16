@@ -7,15 +7,15 @@ import com.xiangqi.shared.network.NetworkMessage;
 import java.util.List;
 
 /**
- * Message containing the list of active games.
+ * Message containing the list of games in response to a game list request.
  */
 public class GameListResponseMessage extends NetworkMessage {
     private static final long serialVersionUID = 1L;
     
     private final List<GameSession> games;
     
-    public GameListResponseMessage(List<GameSession> games) {
-        super(MessageType.GAME_LIST_RESPONSE, null); // Server message
+    public GameListResponseMessage(String senderId, List<GameSession> games) {
+        super(MessageType.GAME_LIST_RESPONSE, senderId);
         this.games = games;
     }
     

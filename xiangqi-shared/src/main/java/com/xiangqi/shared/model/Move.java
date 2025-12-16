@@ -68,6 +68,23 @@ public class Move implements Serializable {
         return notation.toString();
     }
     
+    /**
+     * Creates a special move representing a resignation.
+     */
+    public static Move createResignMove(Player resigningPlayer) {
+        // Create a dummy position and piece for resignation
+        Position dummyPos = new Position(0, 0);
+        ChessPiece dummyPiece = new com.xiangqi.shared.model.pieces.General(resigningPlayer, dummyPos);
+        return new Move(dummyPos, dummyPos, dummyPiece);
+    }
+    
+    /**
+     * Checks if this move represents a resignation.
+     */
+    public boolean isResignation() {
+        return from.equals(to) && from.getRow() == 0 && from.getCol() == 0;
+    }
+    
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;

@@ -5,16 +5,22 @@ import com.xiangqi.shared.network.MessageType;
 import com.xiangqi.shared.network.NetworkMessage;
 
 /**
- * Message for notifying players that a game has started.
+ * Message sent when a game starts.
  */
 public class GameStartMessage extends NetworkMessage {
     private static final long serialVersionUID = 1L;
     
+    private final String gameId;
     private final GameSession gameSession;
     
-    public GameStartMessage(GameSession gameSession) {
-        super(MessageType.GAME_START, null); // Server message
+    public GameStartMessage(String senderId, String gameId, GameSession gameSession) {
+        super(MessageType.GAME_START, senderId);
+        this.gameId = gameId;
         this.gameSession = gameSession;
+    }
+    
+    public String getGameId() {
+        return gameId;
     }
     
     public GameSession getGameSession() {

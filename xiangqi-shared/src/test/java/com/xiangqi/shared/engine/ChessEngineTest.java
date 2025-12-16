@@ -105,7 +105,7 @@ class ChessEngineTest {
         
         // Get valid moves for a red soldier
         Position soldierPos = new Position(6, 0);
-        var validMoves = engine.getValidMoves(soldierPos);
+        java.util.List<Move> validMoves = engine.getValidMoves(soldierPos);
         
         assertFalse(validMoves.isEmpty());
         

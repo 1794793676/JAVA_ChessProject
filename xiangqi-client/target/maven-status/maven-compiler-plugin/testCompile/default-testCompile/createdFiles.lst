@@ -1,0 +1,14 @@
+com\xiangqi\client\multimedia\AudioManagerTest.class
+com\xiangqi\client\ui\ChessBoardPanelTest.class
+com\xiangqi\client\ui\GameFrameTest.class
+com\xiangqi\client\ui\GameFrameTest$2.class
+com\xiangqi\client\ui\GameFrameTest$1.class
+com\xiangqi\client\network\NetworkClientTest$1.class
+com\xiangqi\client\network\NetworkClientTest$TestMessageHandler.class
+com\xiangqi\client\ui\ChessBoardPanelTest$1.class
+com\xiangqi\client\ui\LobbyFrameTest.class
+com\xiangqi\client\ui\LoginFrameTest.class
+com\xiangqi\client\network\NetworkClientTest.class
+com\xiangqi\client\multimedia\ResourceManagerTest.class
+com\xiangqi\client\ui\LoginFrameTest$1.class
+com\xiangqi\client\ui\LobbyFrameTest$1.class

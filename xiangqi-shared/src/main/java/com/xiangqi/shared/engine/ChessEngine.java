@@ -4,20 +4,26 @@ import com.xiangqi.shared.model.*;
 import com.xiangqi.shared.model.pieces.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * Main chess engine that handles game logic, move execution, and state management.
  * Coordinates between rule validation, game state updates, and event notifications.
  */
 public class ChessEngine {
+    private static final Logger LOGGER = Logger.getLogger(ChessEngine.class.getName());
     
     private GameState currentState;
+    private GameState previousState; // For game state recovery
     private final RuleValidator ruleValidator;
     private final List<GameEventListener> eventListeners;
+    private final GameErrorLogger errorLogger;
     
     public ChessEngine() {
         this.ruleValidator = new RuleValidator();
         this.eventListeners = new ArrayList<>();
+        this.errorLogger = GameErrorLogger.getInstance();
     }
     
     public ChessEngine(GameState initialState) {
@@ -40,28 +46,57 @@ public class ChessEngine {
      * Attempts to execute a move. Returns true if successful, false if invalid.
      */
     public boolean executeMove(Move move) {
-        if (!isValidMove(move)) {
-            notifyInvalidMoveAttempted(move, "Move violates game rules");
+        try {
+            // Save current state for potential recovery
+            saveCurrentState();
+            
+            if (!isValidMove(move)) {
+                String reason = getInvalidMoveReason(move);
+                String playerId = move.getPiece() != null && move.getPiece().getOwner() != null ? 
+                    move.getPiece().getOwner().getPlayerId() : "unknown";
+                
+                LOGGER.warning("Invalid move attempted: " + move + " - " + reason);
+                errorLogger.logInvalidMove(move, currentState, reason, playerId);
+                notifyInvalidMoveAttempted(move, reason);
+                return false;
+            }
+            
+            // Apply the move to the game state
+            applyMove(move);
+            
+            // Add move to history
+            currentState.addMove(move);
+            
+            // Switch to the other player
+            currentState.switchPlayer();
+            
+            // Check for game end conditions
+            checkGameEndConditions();
+            
+            // Notify listeners
+            notifyMoveExecuted(move);
+            notifyGameStateChanged();
+            
+            LOGGER.info("Move executed successfully: " + move);
+            return true;
+            
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Exception occurred during move execution: " + move, e);
+            errorLogger.logEngineException("executeMove", currentState, e);
+            
+            // Attempt to recover to previous state
+            if (recoverGameState()) {
+                LOGGER.info("Game state recovered successfully after error");
+                errorLogger.logErrorRecovery("move_execution_error", "restore_previous_state", true);
+                notifyInvalidMoveAttempted(move, "Internal error occurred, game state recovered");
+            } else {
+                LOGGER.severe("Failed to recover game state after error");
+                errorLogger.logErrorRecovery("move_execution_error", "restore_previous_state", false);
+                errorLogger.logGameStateCorruption(currentState, "Move execution failure", e);
+                notifyGameStateCorrupted("Game state corrupted during move execution");
+            }
             return false;
         }
-        
-        // Apply the move to the game state
-        applyMove(move);
-        
-        // Add move to history
-        currentState.addMove(move);
-        
-        // Switch to the other player
-        currentState.switchPlayer();
-        
-        // Check for game end conditions
-        checkGameEndConditions();
-        
-        // Notify listeners
-        notifyMoveExecuted(move);
-        notifyGameStateChanged();
-        
-        return true;
     }
     
     /**
@@ -218,7 +253,8 @@ public class ChessEngine {
         // Remove piece from source position
         currentState.setPiece(move.getFrom(), null);
         
-        // Place piece at target position
+        // Update piece position and place at target position
+        move.getPiece().setPosition(move.getTo());
         currentState.setPiece(move.getTo(), move.getPiece());
     }
     
@@ -230,18 +266,18 @@ public class ChessEngine {
         Player opponent = currentState.getOpponent(currentPlayer);
         
         if (isCheckmate(currentPlayer)) {
-            currentState.setStatus(GameStatus.FINISHED);
-            GameResult result = new GameResult(opponent, currentPlayer, GameResult.ResultType.CHECKMATE);
+            currentState.setStatus(GameStatus.CHECKMATE);
+            GameResult result = GameResult.checkmate(opponent, currentPlayer);
             notifyGameEnded(result);
         } else if (isStalemate(currentPlayer)) {
-            currentState.setStatus(GameStatus.FINISHED);
-            GameResult result = new GameResult(null, null, GameResult.ResultType.STALEMATE);
+            currentState.setStatus(GameStatus.STALEMATE);
+            GameResult result = GameResult.draw(currentPlayer, opponent, "Stalemate");
             notifyGameEnded(result);
         } else if (ruleValidator.violatesFlyingGeneralRule(currentState)) {
             // The player who created the flying general situation loses
             Player previousPlayer = currentState.getOpponent(currentPlayer);
-            currentState.setStatus(GameStatus.FINISHED);
-            GameResult result = new GameResult(currentPlayer, previousPlayer, GameResult.ResultType.RULE_VIOLATION);
+            currentState.setStatus(GameStatus.DRAW);
+            GameResult result = new GameResult(currentPlayer, previousPlayer, GameStatus.DRAW, "Flying general rule violation");
             notifyGameEnded(result);
         }
     }
@@ -268,6 +304,99 @@ public class ChessEngine {
     private void notifyInvalidMoveAttempted(Move move, String reason) {
         for (GameEventListener listener : eventListeners) {
             listener.onInvalidMoveAttempted(move, reason);
+        }
+    }
+    
+    /**
+     * Saves the current game state for potential recovery.
+     */
+    private void saveCurrentState() {
+        if (currentState != null) {
+            try {
+                previousState = currentState.copy();
+                LOGGER.fine("Game state saved for recovery");
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to save game state for recovery", e);
+                previousState = null;
+            }
+        }
+    }
+    
+    /**
+     * Recovers the game state to the previous saved state.
+     * @return true if recovery was successful, false otherwise
+     */
+    public boolean recoverGameState() {
+        if (previousState != null) {
+            try {
+                currentState = previousState.copy();
+                notifyGameStateChanged();
+                LOGGER.info("Game state recovered successfully");
+                return true;
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Failed to recover game state", e);
+            }
+        }
+        LOGGER.warning("No previous state available for recovery");
+        return false;
+    }
+    
+    /**
+     * Gets a detailed reason why a move is invalid.
+     */
+    private String getInvalidMoveReason(Move move) {
+        if (move == null) {
+            return "Move is null";
+        }
+        
+        if (currentState == null) {
+            return "Game not initialized";
+        }
+        
+        Position from = move.getFrom();
+        Position to = move.getTo();
+        ChessPiece piece = move.getPiece();
+        
+        if (!from.isValid()) {
+            return "Invalid source position: " + from;
+        }
+        
+        if (!to.isValid()) {
+            return "Invalid target position: " + to;
+        }
+        
+        ChessPiece pieceAtSource = currentState.getPiece(from);
+        if (pieceAtSource == null) {
+            return "No piece at source position: " + from;
+        }
+        
+        if (!pieceAtSource.equals(piece)) {
+            return "Piece mismatch at source position";
+        }
+        
+        if (!piece.getOwner().equals(currentState.getCurrentPlayer())) {
+            return "Not your turn - current player is " + currentState.getCurrentPlayer().getUsername();
+        }
+        
+        if (!piece.canMoveTo(to, currentState)) {
+            return "Piece cannot move to target position according to movement rules";
+        }
+        
+        // Check if move would leave general in check
+        if (ruleValidator.wouldLeaveGeneralInCheck(move, currentState)) {
+            return "Move would leave your general in check";
+        }
+        
+        return "Move violates game rules";
+    }
+    
+    /**
+     * Notifies listeners that the game state has been corrupted.
+     */
+    private void notifyGameStateCorrupted(String reason) {
+        LOGGER.severe("Game state corrupted: " + reason);
+        for (GameEventListener listener : eventListeners) {
+            listener.onGameStateCorrupted(reason);
         }
     }
 }
