@@ -297,7 +297,12 @@ public class NetworkClient {
             switch (message.getType()) {
                 case LOGIN_RESPONSE:
                     if (message instanceof com.xiangqi.shared.network.messages.LoginResponseMessage) {
-                        // Handle login response - could extract client ID here
+                        messageHandler.handleLoginResponse((com.xiangqi.shared.network.messages.LoginResponseMessage) message);
+                    }
+                    break;
+                case LOBBY_UPDATE:
+                    if (message instanceof com.xiangqi.shared.network.messages.LobbyUpdateMessage) {
+                        messageHandler.handleLobbyUpdate((com.xiangqi.shared.network.messages.LobbyUpdateMessage) message);
                     }
                     break;
                 case MOVE_RESPONSE:
@@ -308,6 +313,21 @@ public class NetworkClient {
                 case CHAT_MESSAGE:
                     if (message instanceof com.xiangqi.shared.network.messages.ChatMessage) {
                         messageHandler.handleChatMessage((com.xiangqi.shared.network.messages.ChatMessage) message);
+                    }
+                    break;
+                case GAME_INVITATION:
+                    if (message instanceof com.xiangqi.shared.network.messages.GameInvitationMessage) {
+                        messageHandler.handleGameInvitation((com.xiangqi.shared.network.messages.GameInvitationMessage) message);
+                    }
+                    break;
+                case PLAYER_LIST_RESPONSE:
+                    if (message instanceof com.xiangqi.shared.network.messages.PlayerListResponseMessage) {
+                        messageHandler.handlePlayerListResponse((com.xiangqi.shared.network.messages.PlayerListResponseMessage) message);
+                    }
+                    break;
+                case GAME_LIST_RESPONSE:
+                    if (message instanceof com.xiangqi.shared.network.messages.GameListResponseMessage) {
+                        messageHandler.handleGameListResponse((com.xiangqi.shared.network.messages.GameListResponseMessage) message);
                     }
                     break;
                 case ERROR_MESSAGE:

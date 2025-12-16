@@ -14,6 +14,13 @@ public interface NetworkMessageHandler {
     void handleLoginRequest(LoginMessage message);
     
     /**
+     * Handles login response messages.
+     */
+    default void handleLoginResponse(LoginResponseMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
      * Handles move messages during gameplay.
      */
     void handleMoveMessage(MoveMessage message);
@@ -39,6 +46,20 @@ public interface NetworkMessageHandler {
      * Handles lobby update requests.
      */
     default void handleLobbyUpdate(LobbyUpdateMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
+     * Handles player list response messages.
+     */
+    default void handlePlayerListResponse(PlayerListResponseMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
+     * Handles game list response messages.
+     */
+    default void handleGameListResponse(GameListResponseMessage message) {
         // Default empty implementation
     }
     

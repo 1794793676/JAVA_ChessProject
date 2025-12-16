@@ -305,9 +305,16 @@ public class ClientHandler implements Runnable {
             return false;
         }
         
-        if (message.getSenderId() == null && message.getType() != com.xiangqi.shared.network.MessageType.LOGIN_REQUEST) {
-            LOGGER.warning("Received message with null sender ID from client " + clientId);
-            return false;
+        // LOGIN_REQUEST messages are allowed to have null sender ID (user not logged in yet)
+        // All other messages must have a valid sender ID
+        if (message.getSenderId() == null) {
+            if (message.getType() == com.xiangqi.shared.network.MessageType.LOGIN_REQUEST) {
+                // LOGIN_REQUEST with null sender ID is valid
+                return true;
+            } else {
+                LOGGER.warning("Received message with null sender ID from client " + clientId);
+                return false;
+            }
         }
         
         return true;

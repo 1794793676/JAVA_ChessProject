@@ -2,3 +2,4 @@ com\xiangqi\server\network\ClientHandler$1.class
 com\xiangqi\server\network\ClientHandler.class
 com\xiangqi\server\GameServerMain.class
 com\xiangqi\server\network\GameServer.class
+com\xiangqi\server\ServerMain.class

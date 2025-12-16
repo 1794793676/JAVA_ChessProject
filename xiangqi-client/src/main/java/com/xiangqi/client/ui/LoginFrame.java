@@ -1,6 +1,7 @@
 package com.xiangqi.client.ui;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -29,7 +30,7 @@ public class LoginFrame extends JFrame {
         setupEventHandlers();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setTitle("象棋游戏 - 登录");
-        setSize(400, 300);
+        setSize(600, 450);
         setLocationRelativeTo(null);
         setResizable(false);
     }
@@ -38,13 +39,57 @@ public class LoginFrame extends JFrame {
      * 初始化UI组件
      */
     private void initializeComponents() {
-        usernameField = new JTextField(20);
-        passwordField = new JPasswordField(20);
+        // 创建更大的输入框
+        usernameField = new JTextField();
+        passwordField = new JPasswordField();
+        
+        // 设置输入框的大小 - 显著增大
+        usernameField.setPreferredSize(new Dimension(350, 35));
+        passwordField.setPreferredSize(new Dimension(350, 35));
+        usernameField.setMinimumSize(new Dimension(350, 35));
+        passwordField.setMinimumSize(new Dimension(350, 35));
+        
+        // 确保输入框可编辑
+        usernameField.setEditable(true);
+        passwordField.setEditable(true);
+        usernameField.setEnabled(true);
+        passwordField.setEnabled(true);
+        
+        // 设置边框使输入框更明显
+        usernameField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
+            BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        passwordField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
+            BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        
+        // 添加提示文字
+        usernameField.setToolTipText("输入任意用户名（不能为空）");
+        passwordField.setToolTipText("输入任意密码（不能为空）");
+        
+        // 设置更大的字体
+        Font inputFont = new Font("微软雅黑", Font.PLAIN, 16);
+        usernameField.setFont(inputFont);
+        passwordField.setFont(inputFont);
+        
+        // 设置背景色为白色
+        usernameField.setBackground(Color.WHITE);
+        passwordField.setBackground(Color.WHITE);
+        
         loginButton = new JButton("登录");
+        loginButton.setFont(new Font("微软雅黑", Font.BOLD, 16));
+        loginButton.setPreferredSize(new Dimension(140, 40));
+        loginButton.setFocusPainted(false);
+        
         errorLabel = new JLabel(" ");
         errorLabel.setForeground(Color.RED);
-        statusLabel = new JLabel("请输入用户名和密码");
-        statusLabel.setForeground(Color.BLUE);
+        errorLabel.setFont(new Font("微软雅黑", Font.BOLD, 13));
+        errorLabel.setHorizontalAlignment(JLabel.CENTER);
+        
+        statusLabel = new JLabel("<html><center>提示：用户名和密码可以是任意值<br>但都不能为空</center></html>");
+        statusLabel.setForeground(new Color(0, 100, 200));
+        statusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 13));
+        statusLabel.setHorizontalAlignment(JLabel.CENTER);
     }
     
     /**
@@ -55,54 +100,60 @@ public class LoginFrame extends JFrame {
         
         // 创建主面板
         JPanel mainPanel = new JPanel(new GridBagLayout());
+        mainPanel.setBackground(new Color(245, 245, 250));
         GridBagConstraints gbc = new GridBagConstraints();
         
         // 标题
         JLabel titleLabel = new JLabel("象棋游戏登录", JLabel.CENTER);
-        titleLabel.setFont(new Font("宋体", Font.BOLD, 18));
+        titleLabel.setFont(new Font("微软雅黑", Font.BOLD, 26));
+        titleLabel.setForeground(new Color(50, 50, 50));
         gbc.gridx = 0; gbc.gridy = 0;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(20, 10, 20, 10);
+        gbc.insets = new Insets(30, 10, 30, 10);
         mainPanel.add(titleLabel, gbc);
         
         // 用户名标签和输入框
         gbc.gridwidth = 1;
         gbc.gridx = 0; gbc.gridy = 1;
-        gbc.insets = new Insets(5, 10, 5, 5);
+        gbc.insets = new Insets(10, 30, 10, 15);
         gbc.anchor = GridBagConstraints.EAST;
-        mainPanel.add(new JLabel("用户名:"), gbc);
+        JLabel usernameLabel = new JLabel("用户名:");
+        usernameLabel.setFont(new Font("微软雅黑", Font.PLAIN, 16));
+        mainPanel.add(usernameLabel, gbc);
         
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(5, 5, 5, 10);
+        gbc.insets = new Insets(10, 15, 10, 30);
         mainPanel.add(usernameField, gbc);
         
         // 密码标签和输入框
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.anchor = GridBagConstraints.EAST;
-        gbc.insets = new Insets(5, 10, 5, 5);
-        mainPanel.add(new JLabel("密码:"), gbc);
+        gbc.insets = new Insets(10, 30, 10, 15);
+        JLabel passwordLabel = new JLabel("密码:");
+        passwordLabel.setFont(new Font("微软雅黑", Font.PLAIN, 16));
+        mainPanel.add(passwordLabel, gbc);
         
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(5, 5, 5, 10);
+        gbc.insets = new Insets(10, 15, 10, 30);
         mainPanel.add(passwordField, gbc);
         
         // 登录按钮
         gbc.gridx = 0; gbc.gridy = 3;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(20, 10, 10, 10);
+        gbc.insets = new Insets(25, 10, 20, 10);
         gbc.anchor = GridBagConstraints.CENTER;
         mainPanel.add(loginButton, gbc);
         
         // 状态标签
         gbc.gridy = 4;
-        gbc.insets = new Insets(10, 10, 5, 10);
+        gbc.insets = new Insets(10, 20, 5, 20);
         mainPanel.add(statusLabel, gbc);
         
         // 错误标签
         gbc.gridy = 5;
-        gbc.insets = new Insets(5, 10, 20, 10);
+        gbc.insets = new Insets(5, 20, 25, 20);
         mainPanel.add(errorLabel, gbc);
         
         add(mainPanel, BorderLayout.CENTER);

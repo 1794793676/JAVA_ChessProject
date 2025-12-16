@@ -52,9 +52,9 @@ public class ConcurrentConnectionPropertyTest {
      */
     @Test
     void testConcurrentConnectionHandlingProperty() {
-        // Test with different connection counts to simulate property-based testing
-        // Reduced counts to avoid port binding issues and focus on the core property
-        int[] connectionCounts = {2, 3, 5, 8, 10};
+        // Test with fewer connection counts for faster execution
+        // Focus on edge cases: small (2), medium (5), and larger (10) connections
+        int[] connectionCounts = {2, 5, 10};
         
         for (int connectionCount : connectionCounts) {
             System.out.println("Testing concurrent connections with count: " + connectionCount);

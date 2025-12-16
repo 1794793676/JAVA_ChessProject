@@ -478,6 +478,24 @@ public class GameClient implements NetworkMessageHandler {
     }
     
     @Override
+    public void handlePlayerListResponse(PlayerListResponseMessage message) {
+        SwingUtilities.invokeLater(() -> {
+            if (lobbyFrame != null) {
+                lobbyFrame.updatePlayerList(message.getPlayers());
+            }
+        });
+    }
+    
+    @Override
+    public void handleGameListResponse(GameListResponseMessage message) {
+        SwingUtilities.invokeLater(() -> {
+            if (lobbyFrame != null) {
+                lobbyFrame.updateGameList(message.getGames());
+            }
+        });
+    }
+    
+    @Override
     public void handleError(ErrorMessage message) {
         LOGGER.warning("Received error message: " + message.getErrorCode() + " - " + message.getErrorDescription());
         

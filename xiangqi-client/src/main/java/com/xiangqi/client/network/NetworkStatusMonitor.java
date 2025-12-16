@@ -220,4 +220,98 @@ public class NetworkStatusMonitor {
             return 0.0;
         }
         return (double) totalPacketsLost / totalPacketsSent;
+    }
+    
+    /**
+     * Gets connection uptime in milliseconds.
+     */
+    public long getConnectionUptime() {
+        if (connectionStartTime == 0) {
+            return 0;
+        }
+        return System.currentTimeMillis() - connectionStartTime;
+    }
+    
+    /**
+     * Resets all statistics.
+     */
+    public void resetStatistics() {
+        totalPacketsSent = 0;
+        totalPacketsReceived = 0;
+        totalPacketsLost = 0;
+        connectionStartTime = System.currentTimeMillis();
+        reconnectionAttempts = 0;
+    }
+    
+    // Notification methods
+    private void notifyStatusChanged(ConnectionStatus oldStatus, ConnectionStatus newStatus) {
+        List<NetworkStatusListener> listenersCopy;
+        synchronized (listeners) {
+            listenersCopy = new ArrayList<>(listeners);
+        }
+        for (NetworkStatusListener listener : listenersCopy) {
+            try {
+                listener.onStatusChanged(oldStatus, newStatus);
+            } catch (Exception e) {
+                LOGGER.warning("Error notifying listener: " + e.getMessage());
+            }
+        }
+    }
+    
+    private void notifyLatencyChanged(long latencyMs) {
+        List<NetworkStatusListener> listenersCopy;
+        synchronized (listeners) {
+            listenersCopy = new ArrayList<>(listeners);
+        }
+        for (NetworkStatusListener listener : listenersCopy) {
+            try {
+                listener.onLatencyChanged(latencyMs);
+            } catch (Exception e) {
+                LOGGER.warning("Error notifying listener: " + e.getMessage());
+            }
+        }
+    }
+    
+    private void notifyConnectionQualityChanged(ConnectionQuality quality) {
+        List<NetworkStatusListener> listenersCopy;
+        synchronized (listeners) {
+            listenersCopy = new ArrayList<>(listeners);
+        }
+        for (NetworkStatusListener listener : listenersCopy) {
+            try {
+                listener.onConnectionQualityChanged(quality);
+            } catch (Exception e) {
+                LOGGER.warning("Error notifying listener: " + e.getMessage());
+            }
+        }
+    }
+    
+    private void notifyReconnectionAttempt(int attemptNumber, int maxAttempts) {
+        List<NetworkStatusListener> listenersCopy;
+        synchronized (listeners) {
+            listenersCopy = new ArrayList<>(listeners);
+        }
+        for (NetworkStatusListener listener : listenersCopy) {
+            try {
+                listener.onReconnectionAttempt(attemptNumber, maxAttempts);
+            } catch (Exception e) {
+                LOGGER.warning("Error notifying listener: " + e.getMessage());
+            }
+        }
+    }
+    
+    private void notifyReconnectionFailed() {
+        List<NetworkStatusListener> listenersCopy;
+        synchronized (listeners) {
+            listenersCopy = new ArrayList<>(listeners);
+        }
+        for (NetworkStatusListener listener : listenersCopy) {
+            try {
+                listener.onReconnectionFailed();
+            } catch (Exception e) {
+                LOGGER.warning("Error notifying listener: " + e.getMessage());
+            }
+        }
+    }
+}
   
