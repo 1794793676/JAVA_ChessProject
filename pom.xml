@@ -14,8 +14,8 @@
     <description>A networked Chinese Chess game with Java Swing</description>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.9.2</junit.version>
         <junit-quickcheck.version>1.0</junit-quickcheck.version>
@@ -62,8 +62,8 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <source>8</source>
-                        <target>8</target>
+                        <source>21</source>
+                        <target>21</target>
                     </configuration>
                 </plugin>
                 
