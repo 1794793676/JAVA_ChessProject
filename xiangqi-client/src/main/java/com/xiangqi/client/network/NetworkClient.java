@@ -307,7 +307,7 @@ public class NetworkClient {
                     break;
                 case MOVE_RESPONSE:
                     if (message instanceof com.xiangqi.shared.network.messages.MoveResponseMessage) {
-                        messageHandler.handleMoveMessage((com.xiangqi.shared.network.messages.MoveMessage) message);
+                        messageHandler.handleMoveResponse((com.xiangqi.shared.network.messages.MoveResponseMessage) message);
                     }
                     break;
                 case CHAT_MESSAGE:
@@ -323,6 +323,11 @@ public class NetworkClient {
                 case GAME_START:
                     if (message instanceof com.xiangqi.shared.network.messages.GameStartMessage) {
                         messageHandler.handleGameStart((com.xiangqi.shared.network.messages.GameStartMessage) message);
+                    }
+                    break;
+                case GAME_STATE_UPDATE:
+                    if (message instanceof com.xiangqi.shared.network.messages.GameStateUpdateMessage) {
+                        messageHandler.handleGameStateUpdate((com.xiangqi.shared.network.messages.GameStateUpdateMessage) message);
                     }
                     break;
                 case PLAYER_LIST_RESPONSE:

@@ -25,6 +25,8 @@ public class ChessBoardPanel extends JPanel {
     private static final int CELL_HEIGHT = BOARD_HEIGHT / Position.BOARD_ROWS;
     
     private GameState gameState;
+    private Player localPlayer;  // The player viewing this board
+    private boolean boardFlipped; // True if board should be flipped (for black player)
     private Position selectedPosition;
     private List<Position> validMoves;
     private Map<String, Image> pieceImages;
@@ -172,65 +174,34 @@ public class ChessBoardPanel extends JPanel {
     }
     
     /**
-     * Handle mouse press events for starting piece selection or drag operations.
+     * Handle mouse press events for starting piece selection.
+     * Drag functionality is disabled to avoid conflicts with click-to-move.
      */
     private void handleMousePressed(MouseEvent e) {
-        if (gameState == null) return;
-        
-        Position clickedPosition = getPositionFromPoint(e.getPoint());
-        if (clickedPosition == null) return;
-        
-        ChessPiece piece = gameState.getPiece(clickedPosition);
-        if (piece != null && piece.getOwner().equals(gameState.getCurrentPlayer())) {
-            // Start dragging
-            draggedPiece = piece;
-            dragOffset = new Point(
-                e.getX() - (clickedPosition.getCol() * CELL_WIDTH + CELL_WIDTH / 2),
-                e.getY() - (clickedPosition.getRow() * CELL_HEIGHT + CELL_HEIGHT / 2)
-            );
-            isDragging = true;
-            
-            // Select the piece and show valid moves
-            selectPiece(clickedPosition);
-        }
+        // Dragging disabled - using click-to-move only
+        // The piece selection is handled in handleMouseClicked
     }
     
     /**
-     * Handle mouse drag events for moving pieces visually.
+     * Handle mouse drag events - disabled to avoid conflicts with click-to-move.
      */
     private void handleMouseDragged(MouseEvent e) {
-        if (isDragging && draggedPiece != null) {
-            repaint();
-        }
+        // Dragging disabled - using click-to-move only
     }
     
     /**
-     * Handle mouse release events for completing moves.
+     * Handle mouse release events - disabled to avoid conflicts with click-to-move.
      */
     private void handleMouseReleased(MouseEvent e) {
-        if (isDragging && draggedPiece != null) {
-            Position targetPosition = getPositionFromPoint(e.getPoint());
-            
-            if (targetPosition != null && selectedPosition != null) {
-                // Attempt to make the move
-                if (eventListener != null) {
-                    eventListener.onMoveAttempted(selectedPosition, targetPosition);
-                }
-            }
-            
-            // Reset drag state
-            isDragging = false;
-            draggedPiece = null;
-            dragOffset = null;
-            repaint();
-        }
+        // Dragging disabled - using click-to-move only
     }
     
     /**
      * Handle mouse click events for click-to-move functionality.
+     * First click selects a piece, second click moves it to the target position.
      */
     private void handleMouseClicked(MouseEvent e) {
-        if (isDragging) return; // Ignore clicks during drag operations
+        if (gameState == null) return;
         
         Position clickedPosition = getPositionFromPoint(e.getPoint());
         if (clickedPosition == null) return;
@@ -242,15 +213,22 @@ public class ChessBoardPanel extends JPanel {
                 selectPiece(clickedPosition);
             }
         } else {
-            // Piece already selected, try to move
+            // Piece already selected, handle the second click
+            ChessPiece clickedPiece = gameState.getPiece(clickedPosition);
+            
             if (clickedPosition.equals(selectedPosition)) {
                 // Clicked on same piece, deselect
                 clearSelection();
+            } else if (clickedPiece != null && clickedPiece.getOwner().equals(gameState.getCurrentPlayer())) {
+                // Clicked on another piece of same player, switch selection
+                selectPiece(clickedPosition);
             } else {
-                // Try to move to clicked position
+                // Try to move to clicked position (empty square or opponent piece)
                 if (eventListener != null) {
                     eventListener.onMoveAttempted(selectedPosition, clickedPosition);
                 }
+                // Clear selection after attempting move
+                clearSelection();
             }
         }
     }
@@ -296,10 +274,17 @@ public class ChessBoardPanel extends JPanel {
     
     /**
      * Convert screen coordinates to board position.
+     * Takes into account board flipping for black player.
      */
     private Position getPositionFromPoint(Point point) {
         int col = point.x / CELL_WIDTH;
         int row = point.y / CELL_HEIGHT;
+        
+        // Flip coordinates if viewing as black player
+        if (boardFlipped) {
+            row = Position.BOARD_ROWS - 1 - row;
+            col = Position.BOARD_COLS - 1 - col;
+        }
         
         if (row >= 0 && row < Position.BOARD_ROWS && col >= 0 && col < Position.BOARD_COLS) {
             return new Position(row, col);
@@ -309,10 +294,20 @@ public class ChessBoardPanel extends JPanel {
     
     /**
      * Convert board position to screen coordinates (center of cell).
+     * Takes into account board flipping for black player.
      */
     private Point getPointFromPosition(Position position) {
-        int x = position.getCol() * CELL_WIDTH + CELL_WIDTH / 2;
-        int y = position.getRow() * CELL_HEIGHT + CELL_HEIGHT / 2;
+        int row = position.getRow();
+        int col = position.getCol();
+        
+        // Flip coordinates if viewing as black player
+        if (boardFlipped) {
+            row = Position.BOARD_ROWS - 1 - row;
+            col = Position.BOARD_COLS - 1 - col;
+        }
+        
+        int x = col * CELL_WIDTH + CELL_WIDTH / 2;
+        int y = row * CELL_HEIGHT + CELL_HEIGHT / 2;
         return new Point(x, y);
     }
     
@@ -326,10 +321,25 @@ public class ChessBoardPanel extends JPanel {
     }
     
     /**
+     * Set the local player and determine if board should be flipped.
+     */
+    public void setLocalPlayer(Player player, GameState state) {
+        this.localPlayer = player;
+        // Flip board if local player is black (so they see their pieces at bottom)
+        if (state != null) {
+            this.boardFlipped = state.isBlackPlayer(player);
+        }
+    }
+    
+    /**
      * Update the game state and refresh the display.
      */
     public void updateGameState(GameState newState) {
         this.gameState = newState;
+        // Update board flip status if local player is set
+        if (localPlayer != null && newState != null) {
+            this.boardFlipped = newState.isBlackPlayer(localPlayer);
+        }
         clearSelection(); // Clear selection when state changes
         repaint();
     }
@@ -372,7 +382,7 @@ public class ChessBoardPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Draw board background
+        // Draw board background (always upright)
         ImageIcon boardIcon = resourceManager.getBoardImage();
         if (boardIcon != null) {
             g2d.drawImage(boardIcon.getImage(), 0, 0, BOARD_WIDTH, BOARD_HEIGHT, this);

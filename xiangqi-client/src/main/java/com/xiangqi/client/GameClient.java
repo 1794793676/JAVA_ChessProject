@@ -359,10 +359,7 @@ public class GameClient implements NetworkMessageHandler {
         }
         
         // Create a special move message indicating resignation
-        // Create a dummy position and piece for resignation
-        Position dummyPos = new Position(0, 0);
-        ChessPiece dummyPiece = new com.xiangqi.shared.model.pieces.General(currentPlayer, dummyPos);
-        Move resignMove = new Move(dummyPos, dummyPos, dummyPiece);
+        Move resignMove = Move.createResignMove(currentPlayer);
         MoveMessage resignMessage = new MoveMessage(
             currentPlayer.getPlayerId(),
             resignMove,
@@ -382,7 +379,14 @@ public class GameClient implements NetworkMessageHandler {
             return;
         }
         
-        // This could be implemented as a special message type or game action
+        // Send draw offer as a special chat message that the opponent can accept
+        ChatMessage drawOfferMessage = new ChatMessage(
+            currentPlayer.getPlayerId(),
+            "DRAW_OFFER:" + currentPlayer.getUsername() + " 提出和棋请求",
+            currentGameSession.getSessionId()
+        );
+        networkClient.sendMessage(drawOfferMessage);
+        
         LOGGER.info("Draw offer requested");
     }
     
@@ -413,19 +417,58 @@ public class GameClient implements NetworkMessageHandler {
     
     @Override
     public void handleMoveMessage(MoveMessage message) {
+        // MoveMessage is sent by clients, not typically received
+        // Server sends MoveResponseMessage instead
+        LOGGER.info("Received MoveMessage from peer: " + message.getGameId());
+    }
+    
+    @Override
+    public void handleMoveResponse(MoveResponseMessage message) {
         if (currentGameSession != null && gameFrame != null) {
-            // Update game state based on received move
-            // This would typically involve updating the game session and refreshing the UI
-            SwingUtilities.invokeLater(() -> {
-                gameFrame.updateGameState(currentGameSession.getGameState());
-                
-                // Play appropriate sound based on move type
-                if (message.getMove().getCapturedPiece() != null) {
-                    audioManager.playSound("eat");
-                } else {
-                    audioManager.playSound("go");
-                }
-            });
+            if (!message.isSuccess()) {
+                // Move failed
+                LOGGER.warning("Move failed: " + message.getErrorMessage());
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(gameFrame, 
+                        "移动失败: " + message.getErrorMessage(),
+                        "无效移动",
+                        JOptionPane.WARNING_MESSAGE);
+                });
+                return;
+            }
+            
+            // Move succeeded - play sound
+            // Game state update will come in separate GAME_STATE_UPDATE message
+            Move move = message.getMove();
+            if (move != null) {
+                SwingUtilities.invokeLater(() -> {
+                    // Play appropriate sound based on move type
+                    if (move.getCapturedPiece() != null) {
+                        audioManager.playSound("eat");
+                    } else {
+                        audioManager.playSound("go");
+                    }
+                });
+            }
+        }
+    }
+    
+    @Override
+    public void handleGameStateUpdate(GameStateUpdateMessage message) {
+        if (currentGameSession != null && message.getGameId().equals(currentGameSession.getSessionId())) {
+            // Update the game state
+            GameState updatedState = message.getGameState();
+            currentGameSession.setGameState(updatedState);
+            
+            // Update the UI
+            if (gameFrame != null) {
+                SwingUtilities.invokeLater(() -> {
+                    gameFrame.updateGameState(updatedState);
+                    LOGGER.info("Game state updated - Current player: " + 
+                        (updatedState.getCurrentPlayer() != null ? 
+                            updatedState.getCurrentPlayer().getUsername() : "null"));
+                });
+            }
         }
     }
     
@@ -433,12 +476,72 @@ public class GameClient implements NetworkMessageHandler {
     public void handleChatMessage(ChatMessage message) {
         if (gameFrame != null) {
             SwingUtilities.invokeLater(() -> {
-                // Get sender name from authenticated players or use sender ID
+                String content = message.getContent();
+                
+                // Check if this is a draw offer
+                if (content.startsWith("DRAW_OFFER:")) {
+                    // Don't show to sender
+                    if (message.getSenderId().equals(currentPlayer.getPlayerId())) {
+                        return;
+                    }
+                    
+                    // Extract the actual message without the prefix
+                    String displayMessage = content.substring("DRAW_OFFER:".length());
+                    
+                    // Show draw offer dialog
+                    int result = JOptionPane.showConfirmDialog(
+                        gameFrame,
+                        displayMessage + "\n是否接受和棋？",
+                        "和棋请求",
+                        JOptionPane.YES_NO_OPTION
+                    );
+                    
+                    if (result == JOptionPane.YES_OPTION) {
+                        // Accept draw offer - send draw response
+                        ChatMessage drawAcceptMessage = new ChatMessage(
+                            currentPlayer.getPlayerId(),
+                            "DRAW_ACCEPT",
+                            currentGameSession.getSessionId()
+                        );
+                        networkClient.sendMessage(drawAcceptMessage);
+                        
+                        // Note: Server should handle the actual game end
+                    } else {
+                        // Decline draw offer
+                        gameFrame.appendChatMessage("系统", "您拒绝了和棋请求");
+                    }
+                    return;
+                }
+                
+                // Check if this is a draw acceptance (for the requester)
+                if (content.equals("DRAW_ACCEPT")) {
+                    // Don't show to sender
+                    if (message.getSenderId().equals(currentPlayer.getPlayerId())) {
+                        return;
+                    }
+                    // Opponent accepted draw - game should end
+                    gameFrame.appendChatMessage("系统", "对手接受了和棋请求");
+                    return;
+                }
+                
+                // Filter out any system/internal messages (don't display)
+                if (content.startsWith("DRAW_") || content.startsWith("SYSTEM_")) {
+                    return;
+                }
+                
+                // Regular chat message
                 String senderName = message.getSenderId();
                 if (currentPlayer != null && currentPlayer.getPlayerId().equals(message.getSenderId())) {
                     senderName = currentPlayer.getUsername();
+                } else if (currentGameSession != null) {
+                    // Try to get opponent's username
+                    Player opponent = currentGameSession.getOpponent(currentPlayer);
+                    if (opponent != null && opponent.getPlayerId().equals(message.getSenderId())) {
+                        senderName = opponent.getUsername();
+                    }
                 }
-                gameFrame.appendChatMessage(senderName, message.getContent());
+                
+                gameFrame.appendChatMessage(senderName, content);
             });
         }
     }
@@ -659,6 +762,16 @@ public class GameClient implements NetworkMessageHandler {
         SwingUtilities.invokeLater(() -> {
             if (gameFrame != null) {
                 gameFrame.showGameEndDialog(message.getGameResult());
+                
+                // Close game frame and return to lobby after a delay
+                Timer timer = new Timer(3000, e -> {
+                    gameFrame.dispose();
+                    gameFrame = null;
+                    currentGameSession = null;
+                    showLobbyInterface();
+                });
+                timer.setRepeats(false);
+                timer.start();
             }
         });
     }

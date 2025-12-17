@@ -31,6 +31,7 @@ public class GameState implements Serializable {
         this.blackPlayer = Objects.requireNonNull(blackPlayer, "Black player cannot be null");
         this.currentPlayer = redPlayer; // Red moves first in Xiangqi
         this.status = GameStatus.IN_PROGRESS;
+        initializeBoard(); // Initialize the board with pieces
     }
     
     public ChessPiece getPiece(Position position) {
@@ -117,6 +118,71 @@ public class GameState implements Serializable {
     }
     
     /**
+     * Checks if the given player is the red player.
+     */
+    public boolean isRedPlayer(Player player) {
+        return player != null && player.equals(redPlayer);
+    }
+    
+    /**
+     * Checks if the given player is the black player.
+     */
+    public boolean isBlackPlayer(Player player) {
+        return player != null && player.equals(blackPlayer);
+    }
+    
+    /**
+     * Executes a move on the board and updates game state.
+     * @param move The move to execute
+     * @return true if the move was executed successfully, false otherwise
+     */
+    public boolean executeMove(Move move) {
+        if (move == null) {
+            return false;
+        }
+        
+        Position from = move.getFrom();
+        Position to = move.getTo();
+        
+        // Validate positions
+        if (!from.isValid() || !to.isValid()) {
+            return false;
+        }
+        
+        ChessPiece piece = getPiece(from);
+        if (piece == null) {
+            return false;
+        }
+        
+        // Verify it's the correct player's turn
+        if (!piece.getOwner().equals(currentPlayer)) {
+            return false;
+        }
+        
+        // Execute the move
+        ChessPiece capturedPiece = getPiece(to);
+        
+        // Remove piece from old position
+        removePiece(from);
+        
+        // Place piece at new position
+        setPiece(to, piece);
+        
+        // Update move with captured piece if any
+        if (capturedPiece != null && move.getCapturedPiece() == null) {
+            move = new Move(from, to, piece, capturedPiece);
+        }
+        
+        // Add to move history
+        addMove(move);
+        
+        // Switch to next player
+        switchPlayer();
+        
+        return true;
+    }
+    
+    /**
      * Creates a deep copy of the current game state.
      */
     public GameState copy() {
@@ -135,6 +201,100 @@ public class GameState implements Serializable {
         copy.moveHistory.addAll(this.moveHistory);
         
         return copy;
+    }
+    
+    /**
+     * Initialize the board with all pieces in their starting positions.
+     */
+    public void initializeBoard() {
+        // Clear the board first
+        for (int row = 0; row < Position.BOARD_ROWS; row++) {
+            for (int col = 0; col < Position.BOARD_COLS; col++) {
+                board[row][col] = null;
+            }
+        }
+        
+        // Red pieces (bottom side, rows 7-9)
+        // Chariots
+        createAndPlaceRedPiece(PieceType.CHARIOT, 9, 0);
+        createAndPlaceRedPiece(PieceType.CHARIOT, 9, 8);
+        
+        // Horses
+        createAndPlaceRedPiece(PieceType.HORSE, 9, 1);
+        createAndPlaceRedPiece(PieceType.HORSE, 9, 7);
+        
+        // Elephants
+        createAndPlaceRedPiece(PieceType.ELEPHANT, 9, 2);
+        createAndPlaceRedPiece(PieceType.ELEPHANT, 9, 6);
+        
+        // Advisors
+        createAndPlaceRedPiece(PieceType.ADVISOR, 9, 3);
+        createAndPlaceRedPiece(PieceType.ADVISOR, 9, 5);
+        
+        // General
+        createAndPlaceRedPiece(PieceType.GENERAL, 9, 4);
+        
+        // Cannons
+        createAndPlaceRedPiece(PieceType.CANNON, 7, 1);
+        createAndPlaceRedPiece(PieceType.CANNON, 7, 7);
+        
+        // Soldiers
+        createAndPlaceRedPiece(PieceType.SOLDIER, 6, 0);
+        createAndPlaceRedPiece(PieceType.SOLDIER, 6, 2);
+        createAndPlaceRedPiece(PieceType.SOLDIER, 6, 4);
+        createAndPlaceRedPiece(PieceType.SOLDIER, 6, 6);
+        createAndPlaceRedPiece(PieceType.SOLDIER, 6, 8);
+        
+        // Black pieces (top side, rows 0-2)
+        // Chariots
+        createAndPlaceBlackPiece(PieceType.CHARIOT, 0, 0);
+        createAndPlaceBlackPiece(PieceType.CHARIOT, 0, 8);
+        
+        // Horses
+        createAndPlaceBlackPiece(PieceType.HORSE, 0, 1);
+        createAndPlaceBlackPiece(PieceType.HORSE, 0, 7);
+        
+        // Elephants
+        createAndPlaceBlackPiece(PieceType.ELEPHANT, 0, 2);
+        createAndPlaceBlackPiece(PieceType.ELEPHANT, 0, 6);
+        
+        // Advisors
+        createAndPlaceBlackPiece(PieceType.ADVISOR, 0, 3);
+        createAndPlaceBlackPiece(PieceType.ADVISOR, 0, 5);
+        
+        // General
+        createAndPlaceBlackPiece(PieceType.GENERAL, 0, 4);
+        
+        // Cannons
+        createAndPlaceBlackPiece(PieceType.CANNON, 2, 1);
+        createAndPlaceBlackPiece(PieceType.CANNON, 2, 7);
+        
+        // Soldiers
+        createAndPlaceBlackPiece(PieceType.SOLDIER, 3, 0);
+        createAndPlaceBlackPiece(PieceType.SOLDIER, 3, 2);
+        createAndPlaceBlackPiece(PieceType.SOLDIER, 3, 4);
+        createAndPlaceBlackPiece(PieceType.SOLDIER, 3, 6);
+        createAndPlaceBlackPiece(PieceType.SOLDIER, 3, 8);
+    }
+    
+    /**
+     * Helper method to create and place a red piece on the board.
+     */
+    private void createAndPlaceRedPiece(PieceType type, int row, int col) {
+        Position pos = new Position(row, col);
+        ChessPiece piece = PieceFactory.createPiece(type, redPlayer, pos);
+        piece.setRedSide(true);
+        setPiece(pos, piece);
+    }
+    
+    /**
+     * Helper method to create and place a black piece on the board.
+     */
+    private void createAndPlaceBlackPiece(PieceType type, int row, int col) {
+        Position pos = new Position(row, col);
+        ChessPiece piece = PieceFactory.createPiece(type, blackPlayer, pos);
+        piece.setRedSide(false);
+        setPiece(pos, piece);
     }
     
     @Override

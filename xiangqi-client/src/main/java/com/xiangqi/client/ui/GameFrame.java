@@ -80,6 +80,7 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
         // Chess board
         boardPanel = new ChessBoardPanel();
         boardPanel.setBoardEventListener(this);
+        // Note: setLocalPlayer will be called later when game state is set
         
         // Timer labels
         redTimerLabel = new JLabel(formatTime(redTimeRemaining));
@@ -327,6 +328,9 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
         this.gameState = newState;
         
         SwingUtilities.invokeLater(() -> {
+            // Set local player if not already set
+            boardPanel.setLocalPlayer(localPlayer, newState);
+            
             // Update board display
             boardPanel.updateGameState(newState);
             

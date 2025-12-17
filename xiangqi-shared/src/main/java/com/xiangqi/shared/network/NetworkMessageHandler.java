@@ -26,6 +26,13 @@ public interface NetworkMessageHandler {
     void handleMoveMessage(MoveMessage message);
     
     /**
+     * Handles move response messages from server.
+     */
+    default void handleMoveResponse(MoveResponseMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
      * Handles chat messages between players.
      */
     void handleChatMessage(ChatMessage message);
@@ -67,6 +74,13 @@ public interface NetworkMessageHandler {
      * Handles game list response messages.
      */
     default void handleGameListResponse(GameListResponseMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
+     * Handles game state update messages.
+     */
+    default void handleGameStateUpdate(GameStateUpdateMessage message) {
         // Default empty implementation
     }
     

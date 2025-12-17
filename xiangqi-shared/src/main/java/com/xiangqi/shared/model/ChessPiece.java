@@ -14,11 +14,13 @@ public abstract class ChessPiece implements Serializable {
     protected final PieceType type;
     protected final Player owner;
     protected Position position;
+    protected boolean isRedSide; // Explicitly track if piece is on red side
     
     protected ChessPiece(PieceType type, Player owner, Position position) {
         this.type = Objects.requireNonNull(type, "Piece type cannot be null");
         this.owner = Objects.requireNonNull(owner, "Owner cannot be null");
         this.position = Objects.requireNonNull(position, "Position cannot be null");
+        this.isRedSide = false; // Default, will be set during board initialization
     }
     
     public PieceType getType() {
@@ -53,8 +55,15 @@ public abstract class ChessPiece implements Serializable {
      * Checks if this piece belongs to the red side (bottom of board).
      */
     public boolean isRed() {
-        // This is a placeholder - actual implementation will depend on how we identify red/black players
-        return owner.getPlayerId().startsWith("red");
+        return isRedSide;
+    }
+    
+    /**
+     * Sets whether this piece is on the red side.
+     * Should be called during board initialization.
+     */
+    public void setRedSide(boolean isRedSide) {
+        this.isRedSide = isRedSide;
     }
     
     /**

@@ -1,8 +1,6 @@
 package com.xiangqi.server.network;
 
-import com.xiangqi.shared.model.GameSession;
-import com.xiangqi.shared.model.Player;
-import com.xiangqi.shared.model.PlayerStatus;
+import com.xiangqi.shared.model.*;
 import com.xiangqi.shared.network.NetworkMessage;
 import com.xiangqi.shared.network.NetworkMessageHandler;
 import com.xiangqi.shared.network.messages.*;
@@ -279,15 +277,53 @@ public class GameServer implements NetworkMessageHandler {
         GameSession session = gameSessions.get(gameId);
         
         if (session != null) {
-            // Validate and process the move
-            // This would integrate with the chess engine
+            Move move = message.getMove();
             
-            // For now, just broadcast the move to both players
-            MoveResponseMessage response = MoveResponseMessage.success(gameId, message.getMove());
-            broadcastToGame(gameId, response);
+            // Check if this is a resignation
+            if (move.isResignation()) {
+                // Handle resignation
+                Player resigningPlayer = move.getPiece().getOwner();
+                Player winner = session.getOpponent(resigningPlayer);
+                GameResult result = GameResult.resignation(winner, resigningPlayer);
+                
+                // Update game state
+                session.getGameState().setStatus(GameStatus.RESIGNED);
+                
+                // Notify both players
+                GameEndMessage endMessage = new GameEndMessage(gameId, result);
+                broadcastToGame(gameId, endMessage);
+                
+                LOGGER.info("Player " + resigningPlayer.getUsername() + " resigned from game " + gameId);
+                return;
+            }
             
-            // Update game state
-            // session.processMove(message.getMove());
+            // Execute the move on the game state
+            GameState gameState = session.getGameState();
+            boolean moveExecuted = gameState.executeMove(move);
+            
+            if (moveExecuted) {
+                // Move successful - broadcast success response with updated state
+                MoveResponseMessage response = MoveResponseMessage.success(gameId, move);
+                broadcastToGame(gameId, response);
+                
+                // Also broadcast updated game state to sync both clients
+                GameStateUpdateMessage stateUpdate = new GameStateUpdateMessage(gameId, gameState);
+                broadcastToGame(gameId, stateUpdate);
+                
+                session.updateLastActivity();
+                LOGGER.info("Move executed successfully in game " + gameId + ": " + move);
+            } else {
+                // Move failed - send error response only to the player who attempted the move
+                String senderId = message.getSenderId();
+                if (senderId != null) {
+                    String clientId = getClientIdForPlayer(senderId);
+                    if (clientId != null) {
+                        MoveResponseMessage response = MoveResponseMessage.failure(gameId, "Invalid move");
+                        sendToClient(clientId, response);
+                        LOGGER.warning("Invalid move attempt in game " + gameId + ": " + move);
+                    }
+                }
+            }
         }
     }
     
@@ -297,10 +333,37 @@ public class GameServer implements NetworkMessageHandler {
             // Broadcast to all clients
             broadcastToAll(message);
         } else {
-            // Send to specific target
-            String targetClientId = getClientIdForPlayer(message.getTargetId());
-            if (targetClientId != null) {
-                sendToClient(targetClientId, message);
+            String targetId = message.getTargetId();
+            
+            // Check if targetId is a game session ID
+            GameSession session = gameSessions.get(targetId);
+            if (session != null) {
+                // Check if this is a draw acceptance
+                if (message.getContent().equals("DRAW_ACCEPT")) {
+                    // End the game as a draw
+                    GameResult result = GameResult.draw(
+                        session.getRedPlayer(), 
+                        session.getBlackPlayer(), 
+                        "Draw by mutual agreement"
+                    );
+                    session.getGameState().setStatus(GameStatus.DRAW);
+                    
+                    // Notify both players
+                    GameEndMessage endMessage = new GameEndMessage(targetId, result);
+                    broadcastToGame(targetId, endMessage);
+                    
+                    LOGGER.info("Game " + targetId + " ended in draw by mutual agreement");
+                    return;
+                }
+                
+                // This is a game chat - broadcast to both players in the game
+                broadcastToGame(targetId, message);
+            } else {
+                // This is a private message to a specific player
+                String targetClientId = getClientIdForPlayer(targetId);
+                if (targetClientId != null) {
+                    sendToClient(targetClientId, message);
+                }
             }
         }
     }
