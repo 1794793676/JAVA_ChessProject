@@ -224,26 +224,35 @@ public class ChessEngine {
         int backRow = isBlack ? 0 : 9;
         int soldierRow = isBlack ? 3 : 6;
         int cannonRow = isBlack ? 2 : 7;
+        boolean isRed = !isBlack;
         
         // Back row pieces
-        currentState.setPiece(new Position(backRow, 0), PieceFactory.createPiece(PieceType.CHARIOT, player, new Position(backRow, 0)));
-        currentState.setPiece(new Position(backRow, 1), PieceFactory.createPiece(PieceType.HORSE, player, new Position(backRow, 1)));
-        currentState.setPiece(new Position(backRow, 2), PieceFactory.createPiece(PieceType.ELEPHANT, player, new Position(backRow, 2)));
-        currentState.setPiece(new Position(backRow, 3), PieceFactory.createPiece(PieceType.ADVISOR, player, new Position(backRow, 3)));
-        currentState.setPiece(new Position(backRow, 4), PieceFactory.createPiece(PieceType.GENERAL, player, new Position(backRow, 4)));
-        currentState.setPiece(new Position(backRow, 5), PieceFactory.createPiece(PieceType.ADVISOR, player, new Position(backRow, 5)));
-        currentState.setPiece(new Position(backRow, 6), PieceFactory.createPiece(PieceType.ELEPHANT, player, new Position(backRow, 6)));
-        currentState.setPiece(new Position(backRow, 7), PieceFactory.createPiece(PieceType.HORSE, player, new Position(backRow, 7)));
-        currentState.setPiece(new Position(backRow, 8), PieceFactory.createPiece(PieceType.CHARIOT, player, new Position(backRow, 8)));
+        setPieceWithSide(new Position(backRow, 0), PieceFactory.createPiece(PieceType.CHARIOT, player, new Position(backRow, 0)), isRed);
+        setPieceWithSide(new Position(backRow, 1), PieceFactory.createPiece(PieceType.HORSE, player, new Position(backRow, 1)), isRed);
+        setPieceWithSide(new Position(backRow, 2), PieceFactory.createPiece(PieceType.ELEPHANT, player, new Position(backRow, 2)), isRed);
+        setPieceWithSide(new Position(backRow, 3), PieceFactory.createPiece(PieceType.ADVISOR, player, new Position(backRow, 3)), isRed);
+        setPieceWithSide(new Position(backRow, 4), PieceFactory.createPiece(PieceType.GENERAL, player, new Position(backRow, 4)), isRed);
+        setPieceWithSide(new Position(backRow, 5), PieceFactory.createPiece(PieceType.ADVISOR, player, new Position(backRow, 5)), isRed);
+        setPieceWithSide(new Position(backRow, 6), PieceFactory.createPiece(PieceType.ELEPHANT, player, new Position(backRow, 6)), isRed);
+        setPieceWithSide(new Position(backRow, 7), PieceFactory.createPiece(PieceType.HORSE, player, new Position(backRow, 7)), isRed);
+        setPieceWithSide(new Position(backRow, 8), PieceFactory.createPiece(PieceType.CHARIOT, player, new Position(backRow, 8)), isRed);
         
         // Cannons
-        currentState.setPiece(new Position(cannonRow, 1), PieceFactory.createPiece(PieceType.CANNON, player, new Position(cannonRow, 1)));
-        currentState.setPiece(new Position(cannonRow, 7), PieceFactory.createPiece(PieceType.CANNON, player, new Position(cannonRow, 7)));
+        setPieceWithSide(new Position(cannonRow, 1), PieceFactory.createPiece(PieceType.CANNON, player, new Position(cannonRow, 1)), isRed);
+        setPieceWithSide(new Position(cannonRow, 7), PieceFactory.createPiece(PieceType.CANNON, player, new Position(cannonRow, 7)), isRed);
         
         // Soldiers
         for (int col = 0; col < Position.BOARD_COLS; col += 2) {
-            currentState.setPiece(new Position(soldierRow, col), PieceFactory.createPiece(PieceType.SOLDIER, player, new Position(soldierRow, col)));
+            setPieceWithSide(new Position(soldierRow, col), PieceFactory.createPiece(PieceType.SOLDIER, player, new Position(soldierRow, col)), isRed);
         }
+    }
+    
+    /**
+     * Helper method to set a piece on the board and configure its side.
+     */
+    private void setPieceWithSide(Position position, ChessPiece piece, boolean isRed) {
+        piece.setRedSide(isRed);
+        currentState.setPiece(position, piece);
     }
     
     /**

@@ -122,10 +122,12 @@ class ChessEngineTest {
         
         // Place black general
         General blackGeneral = new General(blackPlayer, new Position(0, 4));
+        blackGeneral.setRedSide(false); // Black piece
         state.setPiece(new Position(0, 4), blackGeneral);
         
         // Place red chariot that can attack the general
         Chariot redChariot = new Chariot(redPlayer, new Position(0, 0));
+        redChariot.setRedSide(true); // Red piece
         state.setPiece(new Position(0, 0), redChariot);
         
         engine.setCurrentState(state);
