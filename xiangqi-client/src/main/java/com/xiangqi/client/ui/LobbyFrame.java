@@ -251,6 +251,30 @@ public class LobbyFrame extends JFrame {
     }
     
     /**
+     * 根据玩家ID查找玩家
+     */
+    public Player findPlayerById(String playerId) {
+        if (playerId == null) {
+            return null;
+        }
+        
+        // Check if it's the current player
+        if (currentPlayer != null && playerId.equals(currentPlayer.getPlayerId())) {
+            return currentPlayer;
+        }
+        
+        // Search in the player list
+        for (int i = 0; i < playerListModel.getSize(); i++) {
+            Player player = playerListModel.getElementAt(i);
+            if (playerId.equals(player.getPlayerId())) {
+                return player;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
      * 更新游戏列表
      */
     public void updateGameList(List<GameSession> games) {

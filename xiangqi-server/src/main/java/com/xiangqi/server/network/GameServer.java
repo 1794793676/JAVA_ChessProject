@@ -2,6 +2,7 @@ package com.xiangqi.server.network;
 
 import com.xiangqi.shared.model.GameSession;
 import com.xiangqi.shared.model.Player;
+import com.xiangqi.shared.model.PlayerStatus;
 import com.xiangqi.shared.network.NetworkMessage;
 import com.xiangqi.shared.network.NetworkMessageHandler;
 import com.xiangqi.shared.network.messages.*;
@@ -236,9 +237,18 @@ public class GameServer implements NetworkMessageHandler {
     
     @Override
     public void handleLoginRequest(LoginMessage message) {
+        // This method is kept for interface compatibility but should not be called directly
+        LOGGER.warning("handleLoginRequest called without client context");
+    }
+    
+    /**
+     * Handle login request with client context.
+     */
+    public void handleLoginRequest(LoginMessage message, ClientHandler client) {
         // Simple authentication - in real implementation, validate against database
         String username = message.getUsername();
         String password = message.getPassword();
+        String clientId = client.getClientId();
         
         // For demo purposes, accept any non-empty username/password
         boolean authenticated = username != null && !username.trim().isEmpty() && 
@@ -247,27 +257,19 @@ public class GameServer implements NetworkMessageHandler {
         if (authenticated) {
             // Create player
             Player player = new Player(username, username);
+            player.setStatus(PlayerStatus.ONLINE);  // 设置玩家为在线状态
             players.put(player.getPlayerId(), player);
+            clientToPlayer.put(clientId, player.getPlayerId());
             
-            // Find client ID for this login (this is simplified - in real implementation, 
-            // we'd need to track which client sent the login request)
-            String clientId = findClientForLogin(message);
-            if (clientId != null) {
-                clientToPlayer.put(clientId, player.getPlayerId());
-                
-                LoginResponseMessage response = LoginResponseMessage.success(player);
-                sendToClient(clientId, response);
-                
-                broadcastLobbyUpdate();
-                LOGGER.info("Player logged in: " + username);
-            }
+            LoginResponseMessage response = LoginResponseMessage.success(player);
+            sendToClient(clientId, response);
+            
+            broadcastLobbyUpdate();
+            LOGGER.info("Player logged in: " + username + " with clientId: " + clientId);
         } else {
             // Send error response
-            String clientId = findClientForLogin(message);
-            if (clientId != null) {
-                LoginResponseMessage response = LoginResponseMessage.failure("Invalid credentials");
-                sendToClient(clientId, response);
-            }
+            LoginResponseMessage response = LoginResponseMessage.failure("Invalid credentials");
+            sendToClient(clientId, response);
         }
     }
     
@@ -310,8 +312,18 @@ public class GameServer implements NetworkMessageHandler {
     
     @Override
     public void handleGameInvitation(GameInvitationMessage message) {
-        String invitationId = UUID.randomUUID().toString();
-        pendingInvitations.put(invitationId, message);
+        String invitationId = message.getInvitationId();
+        if (invitationId == null || invitationId.isEmpty()) {
+            invitationId = UUID.randomUUID().toString();
+        }
+        
+        LOGGER.info("Handling game invitation from " + message.getSenderId() + " to " + message.getTargetPlayerId());
+        
+        // Store pending invitation with the invitation ID
+        GameInvitationMessage storedInvitation = new GameInvitationMessage(
+            message.getSenderId(), message.getTargetPlayerId(), invitationId
+        );
+        pendingInvitations.put(invitationId, storedInvitation);
         
         // Forward invitation to target player
         String targetClientId = getClientIdForPlayer(message.getTargetPlayerId());
@@ -320,6 +332,15 @@ public class GameServer implements NetworkMessageHandler {
                 message.getSenderId(), message.getTargetPlayerId(), invitationId
             );
             sendToClient(targetClientId, forwardedInvitation);
+            LOGGER.info("Forwarded invitation to client " + targetClientId);
+        } else {
+            LOGGER.warning("Target player not found: " + message.getTargetPlayerId());
+            // Notify sender that target is not available
+            String senderClientId = getClientIdForPlayer(message.getSenderId());
+            if (senderClientId != null) {
+                ErrorMessage error = new ErrorMessage(null, "PLAYER_NOT_FOUND", "Target player is not available");
+                sendToClient(senderClientId, error);
+            }
         }
     }
     
@@ -376,12 +397,6 @@ public class GameServer implements NetworkMessageHandler {
     }
     
     // Helper methods
-    
-    private String findClientForLogin(LoginMessage message) {
-        // In a real implementation, we'd need to track which client sent which message
-        // For now, return the first available client (this is a simplification)
-        return clients.keySet().stream().findFirst().orElse(null);
-    }
     
     private String getClientIdForPlayer(String playerId) {
         return clientToPlayer.entrySet().stream()

@@ -320,6 +320,11 @@ public class NetworkClient {
                         messageHandler.handleGameInvitation((com.xiangqi.shared.network.messages.GameInvitationMessage) message);
                     }
                     break;
+                case GAME_START:
+                    if (message instanceof com.xiangqi.shared.network.messages.GameStartMessage) {
+                        messageHandler.handleGameStart((com.xiangqi.shared.network.messages.GameStartMessage) message);
+                    }
+                    break;
                 case PLAYER_LIST_RESPONSE:
                     if (message instanceof com.xiangqi.shared.network.messages.PlayerListResponseMessage) {
                         messageHandler.handlePlayerListResponse((com.xiangqi.shared.network.messages.PlayerListResponseMessage) message);

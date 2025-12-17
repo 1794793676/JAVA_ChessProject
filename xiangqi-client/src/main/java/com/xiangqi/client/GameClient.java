@@ -299,8 +299,8 @@ public class GameClient implements NetworkMessageHandler {
      */
     private void handleInvitationResponse(String invitationId, boolean accepted) {
         InvitationResponseMessage response = new InvitationResponseMessage(
-            invitationId,
             currentPlayer.getPlayerId(),
+            invitationId,
             accepted
         );
         networkClient.sendMessage(response);
@@ -460,9 +460,16 @@ public class GameClient implements NetworkMessageHandler {
         SwingUtilities.invokeLater(() -> {
             if (lobbyFrame != null) {
                 pendingInvitations.put(message.getInvitationId(), message.getSenderId());
-                // Create a temporary player object for the invitation display
-                Player fromPlayer = new Player(message.getSenderId(), message.getSenderId());
+                
+                // Try to find the real player from the lobby's player list
+                Player fromPlayer = lobbyFrame.findPlayerById(message.getSenderId());
+                if (fromPlayer == null) {
+                    // Fallback: create a temporary player object with just the ID
+                    fromPlayer = new Player(message.getSenderId(), message.getSenderId());
+                }
+                
                 lobbyFrame.showGameInvitation(fromPlayer, message.getInvitationId());
+                LOGGER.info("Game invitation received from: " + fromPlayer.getUsername());
             }
         });
     }

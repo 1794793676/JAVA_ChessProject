@@ -43,6 +43,13 @@ public interface NetworkMessageHandler {
     }
     
     /**
+     * Handles game start messages.
+     */
+    default void handleGameStart(GameStartMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
      * Handles lobby update requests.
      */
     default void handleLobbyUpdate(LobbyUpdateMessage message) {

@@ -223,7 +223,7 @@ public class ClientHandler implements Runnable {
             switch (message.getType()) {
                 case LOGIN_REQUEST:
                     if (message instanceof LoginMessage) {
-                        messageHandler.handleLoginRequest((LoginMessage) message);
+                        gameServer.handleLoginRequest((LoginMessage) message, this);
                     }
                     break;
                     
