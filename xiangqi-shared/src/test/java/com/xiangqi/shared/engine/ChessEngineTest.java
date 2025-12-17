@@ -120,6 +120,13 @@ class ChessEngineTest {
         // Create a simple scenario where black general is in check
         GameState state = new GameState(redPlayer, blackPlayer);
         
+        // Clear the board first to avoid interference from initialized pieces
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < 9; col++) {
+                state.setPiece(new Position(row, col), null);
+            }
+        }
+        
         // Place black general
         General blackGeneral = new General(blackPlayer, new Position(0, 4));
         blackGeneral.setRedSide(false); // Black piece
