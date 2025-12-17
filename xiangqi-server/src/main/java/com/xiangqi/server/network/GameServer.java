@@ -302,16 +302,19 @@ public class GameServer implements NetworkMessageHandler {
             boolean moveExecuted = gameState.executeMove(move);
             
             if (moveExecuted) {
-                // Move successful - broadcast success response with updated state
+                LOGGER.info("Move executed: " + move.getFrom() + " -> " + move.getTo() + 
+                    ", Current player now: " + gameState.getCurrentPlayer().getUsername() +
+                    ", Move count: " + gameState.getMoveHistory().size());
+                
+                // Move successful - broadcast success response
                 MoveResponseMessage response = MoveResponseMessage.success(gameId, move);
                 broadcastToGame(gameId, response);
                 
-                // Also broadcast updated game state to sync both clients
+                // Broadcast updated game state to sync both clients
                 GameStateUpdateMessage stateUpdate = new GameStateUpdateMessage(gameId, gameState);
                 broadcastToGame(gameId, stateUpdate);
                 
                 session.updateLastActivity();
-                LOGGER.info("Move executed successfully in game " + gameId + ": " + move);
             } else {
                 // Move failed - send error response only to the player who attempted the move
                 String senderId = message.getSenderId();

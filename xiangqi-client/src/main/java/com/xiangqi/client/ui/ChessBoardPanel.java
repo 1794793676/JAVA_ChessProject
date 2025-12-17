@@ -65,21 +65,21 @@ public class ChessBoardPanel extends JPanel {
         pieceImages = new HashMap<>();
         
         // Load piece images using ResourceManager - mapping piece types to image numbers
-        // Red pieces (1-16): General(1), Advisor(2,3), Elephant(4,5), Horse(6,7), 
-        // Chariot(8,9), Cannon(10,11), Soldier(12,13,14,15,16)
-        ImageIcon redGeneral = resourceManager.getPieceImage(1);
+        // Red pieces (1-16): General(5), Advisor(4,6), Elephant(3,7), Horse(8,2), 
+        // Chariot(1,9), Cannon(10,11), Soldier(12,13,14,15,16)
+        ImageIcon redGeneral = resourceManager.getPieceImage(5);
         if (redGeneral != null) pieceImages.put("red_general", redGeneral.getImage());
         
-        ImageIcon redAdvisor = resourceManager.getPieceImage(2);
+        ImageIcon redAdvisor = resourceManager.getPieceImage(4);
         if (redAdvisor != null) pieceImages.put("red_advisor", redAdvisor.getImage());
         
-        ImageIcon redElephant = resourceManager.getPieceImage(4);
+        ImageIcon redElephant = resourceManager.getPieceImage(3);
         if (redElephant != null) pieceImages.put("red_elephant", redElephant.getImage());
         
-        ImageIcon redHorse = resourceManager.getPieceImage(6);
+        ImageIcon redHorse = resourceManager.getPieceImage(8);
         if (redHorse != null) pieceImages.put("red_horse", redHorse.getImage());
         
-        ImageIcon redChariot = resourceManager.getPieceImage(8);
+        ImageIcon redChariot = resourceManager.getPieceImage(1);
         if (redChariot != null) pieceImages.put("red_chariot", redChariot.getImage());
         
         ImageIcon redCannon = resourceManager.getPieceImage(10);
@@ -88,21 +88,21 @@ public class ChessBoardPanel extends JPanel {
         ImageIcon redSoldier = resourceManager.getPieceImage(12);
         if (redSoldier != null) pieceImages.put("red_soldier", redSoldier.getImage());
         
-        // Black pieces (17-32): General(17), Advisor(18,19), Elephant(20,21), Horse(22,23),
-        // Chariot(24,25), Cannon(26,27), Soldier(28,29,30,31,32)
-        ImageIcon blackGeneral = resourceManager.getPieceImage(17);
+        // Black pieces (17-32): General(21), Advisor(20,22), Elephant(19,23), Horse(18,24),
+        // Chariot(17,25), Cannon(26,27), Soldier(28,29,30,31,32)
+        ImageIcon blackGeneral = resourceManager.getPieceImage(21);
         if (blackGeneral != null) pieceImages.put("black_general", blackGeneral.getImage());
         
-        ImageIcon blackAdvisor = resourceManager.getPieceImage(18);
+        ImageIcon blackAdvisor = resourceManager.getPieceImage(20);
         if (blackAdvisor != null) pieceImages.put("black_advisor", blackAdvisor.getImage());
         
-        ImageIcon blackElephant = resourceManager.getPieceImage(20);
+        ImageIcon blackElephant = resourceManager.getPieceImage(23);
         if (blackElephant != null) pieceImages.put("black_elephant", blackElephant.getImage());
         
-        ImageIcon blackHorse = resourceManager.getPieceImage(22);
+        ImageIcon blackHorse = resourceManager.getPieceImage(18);
         if (blackHorse != null) pieceImages.put("black_horse", blackHorse.getImage());
         
-        ImageIcon blackChariot = resourceManager.getPieceImage(24);
+        ImageIcon blackChariot = resourceManager.getPieceImage(17);
         if (blackChariot != null) pieceImages.put("black_chariot", blackChariot.getImage());
         
         ImageIcon blackCannon = resourceManager.getPieceImage(26);
@@ -335,13 +335,23 @@ public class ChessBoardPanel extends JPanel {
      * Update the game state and refresh the display.
      */
     public void updateGameState(GameState newState) {
+        if (newState == null) {
+            return;
+        }
+        
         this.gameState = newState;
+        
         // Update board flip status if local player is set
-        if (localPlayer != null && newState != null) {
+        if (localPlayer != null) {
             this.boardFlipped = newState.isBlackPlayer(localPlayer);
         }
-        clearSelection(); // Clear selection when state changes
+        
+        // Clear selection when state changes
+        clearSelection();
+        
+        // Force repaint to show updated board
         repaint();
+        revalidate();
     }
     
     /**

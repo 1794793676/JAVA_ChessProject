@@ -458,17 +458,32 @@ public class GameClient implements NetworkMessageHandler {
         if (currentGameSession != null && message.getGameId().equals(currentGameSession.getSessionId())) {
             // Update the game state
             GameState updatedState = message.getGameState();
+            
+            LOGGER.info("=== Received GameStateUpdate ===");
+            LOGGER.info("Current player: " + 
+                (updatedState.getCurrentPlayer() != null ? 
+                    updatedState.getCurrentPlayer().getUsername() : "null"));
+            LOGGER.info("Move count: " + updatedState.getMoveHistory().size());
+            LOGGER.info("Status: " + updatedState.getStatus());
+            
+            // Print first 3 moves for debugging
+            List<Move> moves = updatedState.getMoveHistory();
+            for (int i = 0; i < Math.min(3, moves.size()); i++) {
+                Move m = moves.get(i);
+                LOGGER.info("  Move " + (i+1) + ": " + m.getFrom() + " -> " + m.getTo());
+            }
+            
             currentGameSession.setGameState(updatedState);
             
             // Update the UI
             if (gameFrame != null) {
                 SwingUtilities.invokeLater(() -> {
                     gameFrame.updateGameState(updatedState);
-                    LOGGER.info("Game state updated - Current player: " + 
-                        (updatedState.getCurrentPlayer() != null ? 
-                            updatedState.getCurrentPlayer().getUsername() : "null"));
+                    LOGGER.info("UI updated with new game state");
                 });
             }
+        } else {
+            LOGGER.warning("Received game state update for different session or no active session");
         }
     }
     
