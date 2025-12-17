@@ -186,7 +186,10 @@ public class GameState implements Serializable {
      * Creates a deep copy of the current game state.
      */
     public GameState copy() {
-        GameState copy = new GameState(redPlayer, blackPlayer);
+        // Create an empty game state without initializing the board
+        GameState copy = new GameState();
+        copy.redPlayer = this.redPlayer;
+        copy.blackPlayer = this.blackPlayer;
         copy.currentPlayer = this.currentPlayer;
         copy.status = this.status;
         
@@ -198,6 +201,7 @@ public class GameState implements Serializable {
         }
         
         // Copy move history
+        copy.moveHistory.clear(); // Clear any existing moves
         copy.moveHistory.addAll(this.moveHistory);
         
         return copy;

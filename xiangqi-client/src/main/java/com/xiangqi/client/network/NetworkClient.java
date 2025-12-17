@@ -327,7 +327,11 @@ public class NetworkClient {
                     break;
                 case GAME_STATE_UPDATE:
                     if (message instanceof com.xiangqi.shared.network.messages.GameStateUpdateMessage) {
+                        LOGGER.info("Received GAME_STATE_UPDATE message, dispatching to handler");
                         messageHandler.handleGameStateUpdate((com.xiangqi.shared.network.messages.GameStateUpdateMessage) message);
+                    } else {
+                        LOGGER.warning("GAME_STATE_UPDATE message type mismatch: " + 
+                            (message != null ? message.getClass().getName() : "null"));
                     }
                     break;
                 case PLAYER_LIST_RESPONSE:

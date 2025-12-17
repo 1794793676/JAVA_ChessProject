@@ -202,12 +202,21 @@ public class GameServer implements NetworkMessageHandler {
             String client1Id = getClientIdForPlayer(player1Id);
             String client2Id = getClientIdForPlayer(player2Id);
             
+            LOGGER.info("BroadcastToGame " + gameId + ": message type=" + message.getType() + 
+                ", client1Id=" + client1Id + ", client2Id=" + client2Id);
+            
             if (client1Id != null) {
                 sendToClient(client1Id, message);
+            } else {
+                LOGGER.warning("Client1 not found for player " + player1Id);
             }
             if (client2Id != null) {
                 sendToClient(client2Id, message);
+            } else {
+                LOGGER.warning("Client2 not found for player " + player2Id);
             }
+        } else {
+            LOGGER.warning("GameSession not found for gameId: " + gameId);
         }
     }
     
@@ -308,10 +317,16 @@ public class GameServer implements NetworkMessageHandler {
                 
                 // Move successful - broadcast success response
                 MoveResponseMessage response = MoveResponseMessage.success(gameId, move);
+                LOGGER.info("Broadcasting MoveResponse to game " + gameId);
                 broadcastToGame(gameId, response);
                 
                 // Broadcast updated game state to sync both clients
-                GameStateUpdateMessage stateUpdate = new GameStateUpdateMessage(gameId, gameState);
+                // Create a copy to ensure serialization captures current state
+                GameState stateCopy = gameState.copy();
+                LOGGER.info("Created state copy for broadcast, move count: " + stateCopy.getMoveHistory().size());
+                GameStateUpdateMessage stateUpdate = new GameStateUpdateMessage(gameId, stateCopy);
+                LOGGER.info("Broadcasting GameStateUpdate to game " + gameId + ", state has " + 
+                    stateCopy.getMoveHistory().size() + " moves");
                 broadcastToGame(gameId, stateUpdate);
                 
                 session.updateLastActivity();

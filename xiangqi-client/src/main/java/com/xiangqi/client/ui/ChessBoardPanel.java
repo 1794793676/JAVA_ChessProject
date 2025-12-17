@@ -336,8 +336,12 @@ public class ChessBoardPanel extends JPanel {
      */
     public void updateGameState(GameState newState) {
         if (newState == null) {
+            System.out.println("[ChessBoardPanel] updateGameState called with null state");
             return;
         }
+        
+        System.out.println("[ChessBoardPanel] Updating game state, move count: " + 
+            newState.getMoveHistory().size());
         
         this.gameState = newState;
         
@@ -350,6 +354,7 @@ public class ChessBoardPanel extends JPanel {
         clearSelection();
         
         // Force repaint to show updated board
+        System.out.println("[ChessBoardPanel] Calling repaint()");
         repaint();
         revalidate();
     }
