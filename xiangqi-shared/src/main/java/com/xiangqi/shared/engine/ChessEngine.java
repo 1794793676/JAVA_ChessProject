@@ -152,17 +152,24 @@ public class ChessEngine {
             return new ArrayList<>();
         }
         
-        List<Move> allMoves = piece.getValidMoves(currentState);
-        List<Move> validMoves = new ArrayList<>();
-        
-        // Filter moves that are actually legal (don't leave general in check, etc.)
-        for (Move move : allMoves) {
-            if (ruleValidator.isValidMove(move, currentState)) {
-                validMoves.add(move);
+        // Save original position and set correct position
+        Position originalPos = piece.getPosition();
+        piece.setPosition(position);
+        try {
+            List<Move> allMoves = piece.getValidMoves(currentState);
+            List<Move> validMoves = new ArrayList<>();
+            
+            // Filter moves that are actually legal (don't leave general in check, etc.)
+            for (Move move : allMoves) {
+                if (ruleValidator.isValidMove(move, currentState)) {
+                    validMoves.add(move);
+                }
             }
+            
+            return validMoves;
+        } finally {
+            piece.setPosition(originalPos);
         }
-        
-        return validMoves;
     }
     
     /**
@@ -259,12 +266,20 @@ public class ChessEngine {
      * Applies a move to the current game state.
      */
     private void applyMove(Move move) {
+        // Get the actual piece from current state (not from the move object)
+        ChessPiece actualPiece = currentState.getPiece(move.getFrom());
+        
+        if (actualPiece == null) {
+            LOGGER.warning("No piece found at source position: " + move.getFrom());
+            return;
+        }
+        
         // Remove piece from source position
         currentState.setPiece(move.getFrom(), null);
         
         // Update piece position and place at target position
-        move.getPiece().setPosition(move.getTo());
-        currentState.setPiece(move.getTo(), move.getPiece());
+        actualPiece.setPosition(move.getTo());
+        currentState.setPiece(move.getTo(), actualPiece);
     }
     
     /**
@@ -288,6 +303,13 @@ public class ChessEngine {
             currentState.setStatus(GameStatus.DRAW);
             GameResult result = new GameResult(currentPlayer, previousPlayer, GameStatus.DRAW, "Flying general rule violation");
             notifyGameEnded(result);
+        } else if (isInCheck(currentPlayer)) {
+            // Set CHECK status when current player is in check
+            currentState.setStatus(GameStatus.CHECK);
+            LOGGER.info(currentPlayer.getUsername() + " is in check!");
+        } else {
+            // Game continues normally
+            currentState.setStatus(GameStatus.IN_PROGRESS);
         }
     }
     
@@ -379,20 +401,32 @@ public class ChessEngine {
             return "No piece at source position: " + from;
         }
         
-        if (!pieceAtSource.equals(piece)) {
+        // Check piece type and owner match (not object equality)
+        if (pieceAtSource.getType() != piece.getType() || 
+            !pieceAtSource.getOwner().equals(piece.getOwner())) {
             return "Piece mismatch at source position";
         }
         
-        if (!piece.getOwner().equals(currentState.getCurrentPlayer())) {
+        if (!pieceAtSource.getOwner().equals(currentState.getCurrentPlayer())) {
             return "Not your turn - current player is " + currentState.getCurrentPlayer().getUsername();
         }
         
-        if (!piece.canMoveTo(to, currentState)) {
-            return "Piece cannot move to target position according to movement rules";
+        // Save original position and temporarily set correct position for validation
+        Position originalPos = pieceAtSource.getPosition();
+        pieceAtSource.setPosition(from);
+        try {
+            if (!pieceAtSource.canMoveTo(to, currentState)) {
+                return "Piece cannot move to target position according to movement rules";
+            }
+        } finally {
+            pieceAtSource.setPosition(originalPos);
         }
         
+        // Create a move with the actual piece from current state
+        Move actualMove = new Move(from, to, pieceAtSource, currentState.getPiece(to));
+        
         // Check if move would leave general in check
-        if (ruleValidator.wouldLeaveGeneralInCheck(move, currentState)) {
+        if (ruleValidator.wouldLeaveGeneralInCheck(actualMove, currentState)) {
             return "Move would leave your general in check";
         }
         

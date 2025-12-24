@@ -20,6 +20,7 @@ com\xiangqi\client\ui\LoginFrame.class
 com\xiangqi\client\network\NetworkStatusMonitor$NetworkStatusListener.class
 com\xiangqi\client\GameClient$2.class
 com\xiangqi\client\multimedia\ResourceManager.class
+com\xiangqi\client\ui\ChessBoardPanel$2.class
 com\xiangqi\client\ui\LobbyFrame$5.class
 com\xiangqi\client\ui\LobbyFrame$LobbyListener.class
 com\xiangqi\client\ui\GameFrame$2.class

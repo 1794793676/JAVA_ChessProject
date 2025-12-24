@@ -212,6 +212,11 @@ public class GameClient implements NetworkMessageHandler {
                 public void onNewGameRequested() {
                     handleNewGameRequest();
                 }
+                
+                @Override
+                public void onReturnToLobbyRequested() {
+                    handleReturnToLobby();
+                }
             });
             
             currentGameSession = gameSession;
@@ -397,6 +402,21 @@ public class GameClient implements NetworkMessageHandler {
         // Return to lobby for now
         showLobbyInterface();
         LOGGER.info("New game requested - returning to lobby");
+    }
+    
+    /**
+     * Handle return to lobby request from game interface.
+     */
+    private void handleReturnToLobby() {
+        // Clean up game session
+        if (gameFrame != null) {
+            gameFrame = null;
+        }
+        currentGameSession = null;
+        
+        // Show lobby interface
+        showLobbyInterface();
+        LOGGER.info("Returned to lobby");
     }
     
     /**
@@ -776,17 +796,8 @@ public class GameClient implements NetworkMessageHandler {
     public void handleGameEnd(GameEndMessage message) {
         SwingUtilities.invokeLater(() -> {
             if (gameFrame != null) {
+                // Show game end dialog (will block until user responds)
                 gameFrame.showGameEndDialog(message.getGameResult());
-                
-                // Close game frame and return to lobby after a delay
-                Timer timer = new Timer(3000, e -> {
-                    gameFrame.dispose();
-                    gameFrame = null;
-                    currentGameSession = null;
-                    showLobbyInterface();
-                });
-                timer.setRepeats(false);
-                timer.start();
             }
         });
     }

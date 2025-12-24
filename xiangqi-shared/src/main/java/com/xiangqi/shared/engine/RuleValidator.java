@@ -28,26 +28,47 @@ public class RuleValidator {
         
         // Check if piece exists at source position
         ChessPiece pieceAtSource = state.getPiece(from);
-        if (pieceAtSource == null || !pieceAtSource.equals(piece)) {
+        if (pieceAtSource == null) {
+            return false;
+        }
+        
+        // Verify piece type and owner match (don't rely on object equality)
+        if (pieceAtSource.getType() != piece.getType() || 
+            !pieceAtSource.getOwner().equals(piece.getOwner())) {
             return false;
         }
         
         // Check if it's the correct player's turn
-        if (!piece.getOwner().equals(state.getCurrentPlayer())) {
+        if (!pieceAtSource.getOwner().equals(state.getCurrentPlayer())) {
             return false;
         }
         
-        // Check if the piece can make this move
-        if (!piece.canMoveTo(to, state)) {
-            return false;
-        }
+        // Save original position in case it's different
+        Position originalPosition = pieceAtSource.getPosition();
         
-        // Check if this move would leave own general in check
-        if (wouldLeaveGeneralInCheck(move, state)) {
-            return false;
-        }
+        // Temporarily set the piece position to 'from' for validation
+        // (in case the piece object's position is out of sync with board state)
+        pieceAtSource.setPosition(from);
         
-        return true;
+        try {
+            // Check if the piece can make this move (use the actual piece from the state)
+            if (!pieceAtSource.canMoveTo(to, state)) {
+                return false;
+            }
+            
+            // Create a new move with the actual piece from current state for checking
+            Move actualMove = new Move(from, to, pieceAtSource, state.getPiece(to));
+            
+            // Check if this move would leave own general in check
+            if (wouldLeaveGeneralInCheck(actualMove, state)) {
+                return false;
+            }
+            
+            return true;
+        } finally {
+            // Restore original position
+            pieceAtSource.setPosition(originalPosition);
+        }
     }
     
     /**
@@ -69,8 +90,15 @@ public class RuleValidator {
                 ChessPiece piece = state.getPiece(pos);
                 
                 if (piece != null && piece.getOwner().equals(opponent)) {
-                    if (piece.canMoveTo(generalPos, state)) {
-                        return true;
+                    // Save original position and temporarily set correct position
+                    Position originalPos = piece.getPosition();
+                    piece.setPosition(pos);
+                    try {
+                        if (piece.canMoveTo(generalPos, state)) {
+                            return true;
+                        }
+                    } finally {
+                        piece.setPosition(originalPos);
                     }
                 }
             }
@@ -94,11 +122,18 @@ public class RuleValidator {
                 ChessPiece piece = state.getPiece(pos);
                 
                 if (piece != null && piece.getOwner().equals(player)) {
-                    // Try all possible moves for this piece
-                    for (Move possibleMove : piece.getValidMoves(state)) {
-                        if (isValidMove(possibleMove, state)) {
-                            return false; // Found a legal move, not checkmate
+                    // Save original position and set correct position
+                    Position originalPos = piece.getPosition();
+                    piece.setPosition(pos);
+                    try {
+                        // Try all possible moves for this piece
+                        for (Move possibleMove : piece.getValidMoves(state)) {
+                            if (isValidMove(possibleMove, state)) {
+                                return false; // Found a legal move, not checkmate
+                            }
                         }
+                    } finally {
+                        piece.setPosition(originalPos);
                     }
                 }
             }
@@ -122,11 +157,18 @@ public class RuleValidator {
                 ChessPiece piece = state.getPiece(pos);
                 
                 if (piece != null && piece.getOwner().equals(player)) {
-                    // Try all possible moves for this piece
-                    for (Move possibleMove : piece.getValidMoves(state)) {
-                        if (isValidMove(possibleMove, state)) {
-                            return false; // Found a legal move, not stalemate
+                    // Save original position and set correct position
+                    Position originalPos = piece.getPosition();
+                    piece.setPosition(pos);
+                    try {
+                        // Try all possible moves for this piece
+                        for (Move possibleMove : piece.getValidMoves(state)) {
+                            if (isValidMove(possibleMove, state)) {
+                                return false; // Found a legal move, not stalemate
+                            }
                         }
+                    } finally {
+                        piece.setPosition(originalPos);
                     }
                 }
             }
@@ -142,13 +184,19 @@ public class RuleValidator {
         // Create a temporary state with the move applied
         GameState tempState = state.copy();
         
+        // Get the actual piece from the temp state (after copy)
+        ChessPiece tempPiece = tempState.getPiece(move.getFrom());
+        if (tempPiece == null) {
+            return false; // No piece to move
+        }
+        
         // Apply the move to the temporary state
-        ChessPiece capturedPiece = tempState.getPiece(move.getTo());
         tempState.setPiece(move.getFrom(), null);
-        tempState.setPiece(move.getTo(), move.getPiece());
+        tempPiece.setPosition(move.getTo());
+        tempState.setPiece(move.getTo(), tempPiece);
         
         // Check if the player's general is in check in this new state
-        return isInCheck(move.getPiece().getOwner(), tempState);
+        return isInCheck(tempPiece.getOwner(), tempState);
     }
     
     /**

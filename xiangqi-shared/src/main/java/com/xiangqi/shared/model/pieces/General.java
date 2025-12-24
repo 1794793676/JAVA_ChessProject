@@ -25,11 +25,16 @@ public class General extends ChessPiece {
         for (int[] dir : directions) {
             int newRow = currentPos.getRow() + dir[0];
             int newCol = currentPos.getCol() + dir[1];
-            Position newPos = new Position(newRow, newCol);
             
-            if (canMoveTo(newPos, state)) {
-                ChessPiece capturedPiece = state.getPiece(newPos);
-                validMoves.add(new Move(currentPos, newPos, this, capturedPiece));
+            // Check if new position is within board bounds before creating Position object
+            if (newRow >= 0 && newRow < Position.BOARD_ROWS && 
+                newCol >= 0 && newCol < Position.BOARD_COLS) {
+                Position newPos = new Position(newRow, newCol);
+                
+                if (canMoveTo(newPos, state)) {
+                    ChessPiece capturedPiece = state.getPiece(newPos);
+                    validMoves.add(new Move(currentPos, newPos, this, capturedPiece));
+                }
             }
         }
         
@@ -98,13 +103,61 @@ public class General extends ChessPiece {
                 Position pos = new Position(row, col);
                 ChessPiece piece = tempState.getPiece(pos);
                 if (piece != null && piece.getOwner().equals(opponent)) {
-                    if (piece.canMoveTo(target, tempState)) {
-                        return true;
+                    // For opponent general, check basic move rules without recursive check validation
+                    if (piece instanceof General) {
+                        if (canBasicMoveTo(piece, target, tempState)) {
+                            return true;
+                        }
+                    } else {
+                        if (piece.canMoveTo(target, tempState)) {
+                            return true;
+                        }
                     }
                 }
             }
         }
         return false;
+    }
+    
+    /**
+     * Check if a general can move to target based on basic rules only (no check/flying general validation).
+     */
+    private boolean canBasicMoveTo(ChessPiece general, Position target, GameState state) {
+        Position currentPos = general.getPosition();
+        
+        // Check if target is valid
+        if (!target.isValid()) {
+            return false;
+        }
+        
+        // Must stay within palace
+        boolean isRedGeneral = general.isRed();
+        int row = target.getRow();
+        int col = target.getCol();
+        boolean inPalace;
+        if (isRedGeneral) {
+            inPalace = row >= 7 && row <= 9 && col >= 3 && col <= 5;
+        } else {
+            inPalace = row >= 0 && row <= 2 && col >= 3 && col <= 5;
+        }
+        if (!inPalace) {
+            return false;
+        }
+        
+        // Can only move one point orthogonally
+        int rowDiff = Math.abs(target.getRow() - currentPos.getRow());
+        int colDiff = Math.abs(target.getCol() - currentPos.getCol());
+        if (!((rowDiff == 1 && colDiff == 0) || (rowDiff == 0 && colDiff == 1))) {
+            return false;
+        }
+        
+        // Cannot capture own pieces
+        ChessPiece targetPiece = state.getPiece(target);
+        if (targetPiece != null && targetPiece.getOwner().equals(general.getOwner())) {
+            return false;
+        }
+        
+        return true;
     }
     
     /**
@@ -125,13 +178,18 @@ public class General extends ChessPiece {
             return false;
         }
         
-        // Check if there are any pieces between them
+        // Create a temporary state with the move applied to check pieces between
+        GameState tempState = state.copy();
+        tempState.setPiece(getPosition(), null);
+        tempState.setPiece(target, this);
+        
+        // Check if there are any pieces between them in the temp state
         int minRow = Math.min(target.getRow(), opponentPos.getRow());
         int maxRow = Math.max(target.getRow(), opponentPos.getRow());
         
         for (int row = minRow + 1; row < maxRow; row++) {
             Position between = new Position(row, target.getCol());
-            if (state.getPiece(between) != null) {
+            if (tempState.getPiece(between) != null) {
                 return false; // There's a piece between them
             }
         }

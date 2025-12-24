@@ -1,5 +1,7 @@
 package com.xiangqi.shared.model;
 
+import com.xiangqi.shared.model.pieces.*;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -159,6 +161,17 @@ public class GameState implements Serializable {
             return false;
         }
         
+        // Validate move according to piece movement rules
+        if (!piece.canMoveTo(to, this)) {
+            return false;
+        }
+        
+        // Check if target position has a piece of the same player
+        ChessPiece targetPiece = getPiece(to);
+        if (targetPiece != null && targetPiece.getOwner().equals(piece.getOwner())) {
+            return false;
+        }
+        
         // Execute the move
         ChessPiece capturedPiece = getPiece(to);
         
@@ -193,10 +206,16 @@ public class GameState implements Serializable {
         copy.currentPlayer = this.currentPlayer;
         copy.status = this.status;
         
-        // Copy board state
+        // Deep copy board state - copy each piece
         for (int row = 0; row < Position.BOARD_ROWS; row++) {
             for (int col = 0; col < Position.BOARD_COLS; col++) {
-                copy.board[row][col] = this.board[row][col];
+                ChessPiece original = this.board[row][col];
+                if (original != null) {
+                    // Create a copy of the piece using reflection/factory pattern
+                    copy.board[row][col] = copyPiece(original);
+                } else {
+                    copy.board[row][col] = null;
+                }
             }
         }
         
@@ -205,6 +224,46 @@ public class GameState implements Serializable {
         copy.moveHistory.addAll(this.moveHistory);
         
         return copy;
+    }
+    
+    /**
+     * Creates a copy of a chess piece.
+     */
+    private ChessPiece copyPiece(ChessPiece piece) {
+        if (piece == null) return null;
+        
+        Position pos = piece.getPosition();
+        ChessPiece newPiece = null;
+        
+        switch (piece.getType()) {
+            case GENERAL:
+                newPiece = new General(piece.getOwner(), pos);
+                break;
+            case ADVISOR:
+                newPiece = new Advisor(piece.getOwner(), pos);
+                break;
+            case ELEPHANT:
+                newPiece = new Elephant(piece.getOwner(), pos);
+                break;
+            case HORSE:
+                newPiece = new Horse(piece.getOwner(), pos);
+                break;
+            case CHARIOT:
+                newPiece = new Chariot(piece.getOwner(), pos);
+                break;
+            case CANNON:
+                newPiece = new Cannon(piece.getOwner(), pos);
+                break;
+            case SOLDIER:
+                newPiece = new Soldier(piece.getOwner(), pos);
+                break;
+        }
+        
+        if (newPiece != null) {
+            newPiece.setRedSide(piece.isRed());
+        }
+        
+        return newPiece;
     }
     
     /**

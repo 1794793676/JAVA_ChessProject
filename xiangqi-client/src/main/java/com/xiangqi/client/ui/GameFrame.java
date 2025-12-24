@@ -55,6 +55,7 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
         void onResignRequested();
         void onDrawOfferRequested();
         void onNewGameRequested();
+        void onReturnToLobbyRequested();
     }
     
     public GameFrame(Player localPlayer, NetworkClient networkClient) {
@@ -85,24 +86,27 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
         // Timer labels
         redTimerLabel = new JLabel(formatTime(redTimeRemaining));
         blackTimerLabel = new JLabel(formatTime(blackTimeRemaining));
-        redTimerLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        blackTimerLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        redTimerLabel.setFont(new Font("微软雅黑", Font.BOLD, 16));
+        blackTimerLabel.setFont(new Font("微软雅黑", Font.BOLD, 16));
         redTimerLabel.setForeground(Color.RED);
         blackTimerLabel.setForeground(Color.BLACK);
         
         // Game status labels
         currentPlayerLabel = new JLabel("当前玩家: 等待游戏开始");
         gameStatusLabel = new JLabel("游戏状态: 等待对手");
-        currentPlayerLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        gameStatusLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        currentPlayerLabel.setFont(new Font("微软雅黑", Font.BOLD, 14));
+        gameStatusLabel.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         
         // Chat components
         chatArea = new JTextArea(10, 30);
         chatArea.setEditable(false);
-        chatArea.setFont(new Font("Arial", Font.PLAIN, 12));
+        chatArea.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         chatArea.setBackground(Color.WHITE);
+        chatArea.setLineWrap(true);
+        chatArea.setWrapStyleWord(true);
         
         chatInput = new JTextField(25);
+        chatInput.setFont(new Font("微软雅黑", Font.PLAIN, 12));
         sendChatButton = new JButton("发送");
         
         // Game control buttons
@@ -354,6 +358,11 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
             } else {
                 stopTimer();
             }
+            
+            // Show check notification (but not for checkmate, which is handled by GameEndMessage)
+            if (newState.getStatus() == GameStatus.CHECK) {
+                showCheckNotification(newState.getCurrentPlayer());
+            }
         });
     }
     
@@ -423,7 +432,12 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
                 if (gameEventListener != null) {
                     gameEventListener.onNewGameRequested();
                 }
-            } else { // Return to lobby
+            } else { // Return to lobby (option == 1 or dialog closed)
+                // Notify client to return to lobby
+                if (gameEventListener != null) {
+                    gameEventListener.onReturnToLobbyRequested();
+                }
+                // Dispose game frame after notifying
                 dispose();
             }
         });
@@ -435,27 +449,45 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
     private String buildGameEndMessage(GameResult result) {
         StringBuilder message = new StringBuilder();
         
-        if (result.getWinner() != null) {
-            message.append("获胜者: ").append(result.getWinner().getUsername()).append("\n");
-        }
-        
         switch (result.getEndStatus()) {
             case CHECKMATE:
-                message.append("将死！");
+                if (result.getWinner() != null) {
+                    if (result.getWinner().equals(localPlayer)) {
+                        message.append("🎉 恭喜您获胜！\n\n");
+                        message.append("您成功将死了对手 ").append(result.getLoser().getUsername()).append("！");
+                    } else {
+                        message.append("💔 很遗憾，您输了！\n\n");
+                        message.append("您被 ").append(result.getWinner().getUsername()).append(" 将死了！");
+                    }
+                } else {
+                    message.append("将死！游戏结束");
+                }
                 break;
             case RESIGNED:
+                if (result.getWinner() != null) {
+                    message.append("获胜者: ").append(result.getWinner().getUsername()).append("\n");
+                }
                 message.append("对手认输");
                 break;
             case TIMEOUT:
+                if (result.getWinner() != null) {
+                    message.append("获胜者: ").append(result.getWinner().getUsername()).append("\n");
+                }
                 message.append("超时");
                 break;
             case DRAW:
                 message.append("和棋");
                 break;
+            case STALEMATE:
+                message.append("困毙 - 无子可动");
+                break;
             case ABANDONED:
                 message.append("对手断线");
                 break;
             default:
+                if (result.getWinner() != null) {
+                    message.append("获胜者: ").append(result.getWinner().getUsername()).append("\n");
+                }
                 message.append("游戏结束: ").append(result.getReason());
         }
         
@@ -502,16 +534,42 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
         
         // Check if it's the local player's turn
         if (!piece.getOwner().equals(localPlayer)) {
-            appendChatMessage("系统", "不是您的回合！");
+            String positionInfo = String.format("位置 (%d,%d)", from.getRow(), from.getCol());
+            appendChatMessage("系统", "不是您的回合！" + positionInfo);
             return;
         }
         
         // Create move object
         Move move = new Move(from, to, piece, gameState.getPiece(to));
         
+        // Show move attempt info
+        String pieceName = getPieceDisplayName(piece);
+        String moveInfo = String.format("%s 从 (%d,%d) 移动到 (%d,%d)", 
+            pieceName, from.getRow(), from.getCol(), to.getRow(), to.getCol());
+        LOGGER.fine("Move attempt: " + moveInfo);
+        
         if (gameEventListener != null) {
             gameEventListener.onMoveAttempted(move);
         }
+    }
+    
+    /**
+     * Get display name for chess piece.
+     */
+    private String getPieceDisplayName(ChessPiece piece) {
+        String colorPrefix = piece.isRed() ? "红" : "黑";
+        String typeName;
+        switch (piece.getType()) {
+            case GENERAL: typeName = piece.isRed() ? "帅" : "将"; break;
+            case ADVISOR: typeName = "士"; break;
+            case ELEPHANT: typeName = piece.isRed() ? "相" : "象"; break;
+            case HORSE: typeName = "马"; break;
+            case CHARIOT: typeName = "车"; break;
+            case CANNON: typeName = "炮"; break;
+            case SOLDIER: typeName = piece.isRed() ? "兵" : "卒"; break;
+            default: typeName = piece.getType().name();
+        }
+        return colorPrefix + typeName;
     }
     
     @Override
@@ -550,14 +608,20 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
     @Override
     public void onInvalidMoveAttempted(Move move, String reason) {
         SwingUtilities.invokeLater(() -> {
+            // Build detailed error message with position info
+            String positionInfo = String.format("从 (%d,%d) 到 (%d,%d)", 
+                move.getFrom().getRow(), move.getFrom().getCol(),
+                move.getTo().getRow(), move.getTo().getCol());
+            String detailedReason = getUserFriendlyErrorMessage(reason) + " - " + positionInfo;
+            
             // Show error message to user
-            showInvalidMoveError(reason);
+            showInvalidMoveError(detailedReason);
             
             // Log the error
             LOGGER.warning("Invalid move attempted: " + move + " - " + reason);
             
-            // Add to chat for user feedback
-            appendChatMessage("系统", "无效移动: " + reason);
+            // Add to chat for user feedback with position
+            appendChatMessage("系统", "无效移动: " + detailedReason);
         });
     }
     
@@ -581,6 +645,26 @@ public class GameFrame extends JFrame implements ChessBoardPanel.BoardEventListe
             // Add to chat
             appendChatMessage("系统", "游戏状态错误: " + reason);
         });
+    }
+    
+    /**
+     * Shows a notification when a player is in check.
+     */
+    private void showCheckNotification(Player playerInCheck) {
+        // Only show notification if it's the local player
+        if (playerInCheck.equals(localPlayer)) {
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "警告：您的将/帅正在被将军！\n请移动棋子解除将军状态。",
+                    "将军提示",
+                    JOptionPane.WARNING_MESSAGE
+                );
+                appendChatMessage("系统", "您正处于被将军状态，必须解除将军！");
+            });
+        } else {
+            appendChatMessage("系统", playerInCheck.getUsername() + " 正处于被将军状态！");
+        }
     }
     
     /**

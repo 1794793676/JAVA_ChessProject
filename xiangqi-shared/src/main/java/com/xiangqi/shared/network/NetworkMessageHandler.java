@@ -85,6 +85,13 @@ public interface NetworkMessageHandler {
     }
     
     /**
+     * Handles game end messages.
+     */
+    default void handleGameEnd(GameEndMessage message) {
+        // Default empty implementation
+    }
+    
+    /**
      * Handles error messages.
      */
     default void handleError(ErrorMessage message) {

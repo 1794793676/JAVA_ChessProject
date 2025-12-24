@@ -115,6 +115,11 @@ public class GameFrameTest {
             public void onNewGameRequested() {
                 // Test listener
             }
+            
+            @Override
+            public void onReturnToLobbyRequested() {
+                // Test listener
+            }
         };
         
         assertDoesNotThrow(() -> {

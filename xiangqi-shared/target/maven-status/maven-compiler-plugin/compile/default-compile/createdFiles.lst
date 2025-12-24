@@ -1,4 +1,5 @@
 com\xiangqi\shared\model\GameResult.class
+com\xiangqi\shared\model\GameState$1.class
 com\xiangqi\shared\network\messages\ChatMessage.class
 com\xiangqi\shared\network\messages\PlayerListRequestMessage.class
 com\xiangqi\shared\network\messages\GameListRequestMessage.class

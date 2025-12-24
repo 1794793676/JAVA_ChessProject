@@ -252,6 +252,11 @@ public class ChessBoardPanel extends JPanel {
             for (Move move : moves) {
                 validMoves.add(move.getTo());
             }
+            
+            // Log selection with position info
+            String pieceName = getPieceDisplayName(piece);
+            System.out.println(String.format("选中 %s，当前位置: (%d,%d)，可移动位置数: %d",
+                pieceName, position.getRow(), position.getCol(), validMoves.size()));
         } else {
             validMoves = null;
         }
@@ -261,6 +266,25 @@ public class ChessBoardPanel extends JPanel {
         }
         
         repaint();
+    }
+    
+    /**
+     * Get display name for chess piece.
+     */
+    private String getPieceDisplayName(ChessPiece piece) {
+        String colorPrefix = piece.isRed() ? "红" : "黑";
+        String typeName;
+        switch (piece.getType()) {
+            case GENERAL: typeName = piece.isRed() ? "帅" : "将"; break;
+            case ADVISOR: typeName = "士"; break;
+            case ELEPHANT: typeName = piece.isRed() ? "相" : "象"; break;
+            case HORSE: typeName = "马"; break;
+            case CHARIOT: typeName = "车"; break;
+            case CANNON: typeName = "炮"; break;
+            case SOLDIER: typeName = piece.isRed() ? "兵" : "卒"; break;
+            default: typeName = piece.getType().name();
+        }
+        return colorPrefix + typeName;
     }
     
     /**

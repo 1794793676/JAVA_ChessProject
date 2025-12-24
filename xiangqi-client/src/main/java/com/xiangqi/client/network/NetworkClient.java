@@ -334,6 +334,15 @@ public class NetworkClient {
                             (message != null ? message.getClass().getName() : "null"));
                     }
                     break;
+                case GAME_END:
+                    if (message instanceof com.xiangqi.shared.network.messages.GameEndMessage) {
+                        LOGGER.info("Received GAME_END message, dispatching to handler");
+                        messageHandler.handleGameEnd((com.xiangqi.shared.network.messages.GameEndMessage) message);
+                    } else {
+                        LOGGER.warning("GAME_END message type mismatch: " + 
+                            (message != null ? message.getClass().getName() : "null"));
+                    }
+                    break;
                 case PLAYER_LIST_RESPONSE:
                     if (message instanceof com.xiangqi.shared.network.messages.PlayerListResponseMessage) {
                         messageHandler.handlePlayerListResponse((com.xiangqi.shared.network.messages.PlayerListResponseMessage) message);

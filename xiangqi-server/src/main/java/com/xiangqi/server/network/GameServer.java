@@ -1,6 +1,8 @@
 package com.xiangqi.server.network;
 
 import com.xiangqi.shared.model.*;
+import com.xiangqi.shared.engine.ChessEngine;
+import com.xiangqi.shared.engine.GameEventListener;
 import com.xiangqi.shared.network.NetworkMessage;
 import com.xiangqi.shared.network.NetworkMessageHandler;
 import com.xiangqi.shared.network.messages.*;
@@ -40,6 +42,7 @@ public class GameServer implements NetworkMessageHandler {
     private final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
     private final Map<String, Player> players = new ConcurrentHashMap<>();
     private final Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
+    private final Map<String, ChessEngine> gameEngines = new ConcurrentHashMap<>();
     private final Map<String, String> clientToPlayer = new ConcurrentHashMap<>();
     private final Map<String, GameInvitationMessage> pendingInvitations = new ConcurrentHashMap<>();
     
@@ -284,8 +287,9 @@ public class GameServer implements NetworkMessageHandler {
     public void handleMoveMessage(MoveMessage message) {
         String gameId = message.getGameId();
         GameSession session = gameSessions.get(gameId);
+        ChessEngine engine = gameEngines.get(gameId);
         
-        if (session != null) {
+        if (session != null && engine != null) {
             Move move = message.getMove();
             
             // Check if this is a resignation
@@ -306,14 +310,20 @@ public class GameServer implements NetworkMessageHandler {
                 return;
             }
             
-            // Execute the move on the game state
-            GameState gameState = session.getGameState();
-            boolean moveExecuted = gameState.executeMove(move);
+            // Execute the move using ChessEngine (which will check for check/checkmate)
+            boolean moveExecuted = engine.executeMove(move);
             
             if (moveExecuted) {
+                // Get the updated game state from engine
+                GameState gameState = engine.getCurrentState();
+                
                 LOGGER.info("Move executed: " + move.getFrom() + " -> " + move.getTo() + 
                     ", Current player now: " + gameState.getCurrentPlayer().getUsername() +
+                    ", Game status: " + gameState.getStatus() +
                     ", Move count: " + gameState.getMoveHistory().size());
+                
+                // Update session's game state
+                session.setGameState(gameState);
                 
                 // Move successful - broadcast success response
                 MoveResponseMessage response = MoveResponseMessage.success(gameId, move);
@@ -321,15 +331,24 @@ public class GameServer implements NetworkMessageHandler {
                 broadcastToGame(gameId, response);
                 
                 // Broadcast updated game state to sync both clients
-                // Create a copy to ensure serialization captures current state
                 GameState stateCopy = gameState.copy();
-                LOGGER.info("Created state copy for broadcast, move count: " + stateCopy.getMoveHistory().size());
+                LOGGER.info("Created state copy for broadcast, move count: " + stateCopy.getMoveHistory().size() + 
+                    ", status: " + stateCopy.getStatus());
                 GameStateUpdateMessage stateUpdate = new GameStateUpdateMessage(gameId, stateCopy);
-                LOGGER.info("Broadcasting GameStateUpdate to game " + gameId + ", state has " + 
-                    stateCopy.getMoveHistory().size() + " moves");
+                LOGGER.info("Broadcasting GameStateUpdate to game " + gameId);
                 broadcastToGame(gameId, stateUpdate);
                 
                 session.updateLastActivity();
+                
+                // Check if game has ended (checkmate, stalemate, etc.)
+                // The ChessEngine event listener will have already sent GameEndMessage,
+                // but we ensure it's sent after the state update
+                GameStatus status = gameState.getStatus();
+                if (status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE || 
+                    status == GameStatus.RESIGNED || status == GameStatus.DRAW) {
+                    // Game has ended - the GameEndMessage should already be sent by event listener
+                    LOGGER.info("Game ended with status: " + status);
+                }
             } else {
                 // Move failed - send error response only to the player who attempted the move
                 String senderId = message.getSenderId();
@@ -342,6 +361,10 @@ public class GameServer implements NetworkMessageHandler {
                     }
                 }
             }
+        } else if (session == null) {
+            LOGGER.warning("Game session not found for gameId: " + gameId);
+        } else {
+            LOGGER.warning("Chess engine not found for gameId: " + gameId);
         }
     }
     
@@ -441,6 +464,50 @@ public class GameServer implements NetworkMessageHandler {
                     String gameId = UUID.randomUUID().toString();
                     GameSession session = new GameSession(gameId, player1, player2);
                     gameSessions.put(gameId, session);
+                    
+                    // Create ChessEngine for this game
+                    ChessEngine engine = new ChessEngine(session.getGameState());
+                    
+                    // Add event listener to handle game end
+                    engine.addEventListener(new GameEventListener() {
+                        @Override
+                        public void onMoveExecuted(Move move) {}
+                        
+                        @Override
+                        public void onGameStateChanged(GameState state) {}
+                        
+                        @Override
+                        public void onPlayerJoined(Player player) {}
+                        
+                        @Override
+                        public void onPlayerLeft(Player player) {}
+                        
+                        @Override
+                        public void onGameEnded(GameResult result) {
+                            // Add a small delay to ensure GameStateUpdateMessage is processed first
+                            new Thread(() -> {
+                                try {
+                                    Thread.sleep(100); // 100ms delay
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                }
+                                // Notify both players that game has ended
+                                GameEndMessage endMessage = new GameEndMessage(gameId, result);
+                                broadcastToGame(gameId, endMessage);
+                                LOGGER.info("Game ended: " + gameId + ", Result: " + result.getEndStatus());
+                            }).start();
+                        }
+                        
+                        @Override
+                        public void onInvalidMoveAttempted(Move move, String reason) {}
+                        
+                        @Override
+                        public void onGameStateCorrupted(String reason) {
+                            LOGGER.severe("Game state corrupted for game " + gameId + ": " + reason);
+                        }
+                    });
+                    
+                    gameEngines.put(gameId, engine);
                     
                     // Notify both players
                     GameStartMessage startMessage = new GameStartMessage(null, gameId, session);
