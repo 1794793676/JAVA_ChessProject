@@ -302,9 +302,17 @@ public class GameServer implements NetworkMessageHandler {
                 // Update game state
                 session.getGameState().setStatus(GameStatus.RESIGNED);
                 
+                // Reset both players' status to ONLINE
+                resigningPlayer.setStatus(PlayerStatus.ONLINE);
+                winner.setStatus(PlayerStatus.ONLINE);
+                LOGGER.info("Reset players " + resigningPlayer.getUsername() + " and " + winner.getUsername() + " status to ONLINE after resignation");
+                
                 // Notify both players
                 GameEndMessage endMessage = new GameEndMessage(gameId, result);
                 broadcastToGame(gameId, endMessage);
+                
+                // Broadcast updated player list
+                broadcastLobbyUpdate();
                 
                 LOGGER.info("Player " + resigningPlayer.getUsername() + " resigned from game " + gameId);
                 return;
@@ -389,9 +397,18 @@ public class GameServer implements NetworkMessageHandler {
                     );
                     session.getGameState().setStatus(GameStatus.DRAW);
                     
+                    // Reset both players' status to ONLINE
+                    session.getRedPlayer().setStatus(PlayerStatus.ONLINE);
+                    session.getBlackPlayer().setStatus(PlayerStatus.ONLINE);
+                    LOGGER.info("Reset players " + session.getRedPlayer().getUsername() + " and " + 
+                               session.getBlackPlayer().getUsername() + " status to ONLINE after draw");
+                    
                     // Notify both players
                     GameEndMessage endMessage = new GameEndMessage(targetId, result);
                     broadcastToGame(targetId, endMessage);
+                    
+                    // Broadcast updated player list
+                    broadcastLobbyUpdate();
                     
                     LOGGER.info("Game " + targetId + " ended in draw by mutual agreement");
                     return;
@@ -422,6 +439,18 @@ public class GameServer implements NetworkMessageHandler {
         }
         
         LOGGER.info("Handling game invitation from " + message.getSenderId() + " to " + message.getTargetPlayerId());
+        
+        // Check if target player is already in a game
+        Player targetPlayer = players.get(message.getTargetPlayerId());
+        if (targetPlayer != null && targetPlayer.getStatus() == PlayerStatus.IN_GAME) {
+            LOGGER.warning("Target player " + message.getTargetPlayerId() + " is already in a game");
+            String senderClientId = getClientIdForPlayer(message.getSenderId());
+            if (senderClientId != null) {
+                ErrorMessage error = new ErrorMessage(null, "PLAYER_IN_GAME", "该玩家正在进行游戏，无法邀请！");
+                sendToClient(senderClientId, error);
+            }
+            return;
+        }
         
         // Store pending invitation with the invitation ID
         GameInvitationMessage storedInvitation = new GameInvitationMessage(
@@ -495,6 +524,23 @@ public class GameServer implements NetworkMessageHandler {
                                 GameEndMessage endMessage = new GameEndMessage(gameId, result);
                                 broadcastToGame(gameId, endMessage);
                                 LOGGER.info("Game ended: " + gameId + ", Result: " + result.getEndStatus());
+                                
+                                // Reset players' status to ONLINE after game ends
+                                GameSession endedSession = gameSessions.get(gameId);
+                                if (endedSession != null) {
+                                    Player p1 = endedSession.getRedPlayer();
+                                    Player p2 = endedSession.getBlackPlayer();
+                                    if (p1 != null) {
+                                        p1.setStatus(PlayerStatus.ONLINE);
+                                        LOGGER.info("Reset player " + p1.getUsername() + " status to ONLINE");
+                                    }
+                                    if (p2 != null) {
+                                        p2.setStatus(PlayerStatus.ONLINE);
+                                        LOGGER.info("Reset player " + p2.getUsername() + " status to ONLINE");
+                                    }
+                                    // Broadcast updated player list
+                                    broadcastLobbyUpdate();
+                                }
                             }).start();
                         }
                         
@@ -509,10 +555,16 @@ public class GameServer implements NetworkMessageHandler {
                     
                     gameEngines.put(gameId, engine);
                     
+                    // Set both players' status to IN_GAME
+                    player1.setStatus(PlayerStatus.IN_GAME);
+                    player2.setStatus(PlayerStatus.IN_GAME);
+                    LOGGER.info("Set players " + player1.getUsername() + " and " + player2.getUsername() + " status to IN_GAME");
+                    
                     // Notify both players
                     GameStartMessage startMessage = new GameStartMessage(null, gameId, session);
                     broadcastToGame(gameId, startMessage);
                     
+                    // Broadcast updated player list to all clients
                     broadcastLobbyUpdate();
                 }
             } else {

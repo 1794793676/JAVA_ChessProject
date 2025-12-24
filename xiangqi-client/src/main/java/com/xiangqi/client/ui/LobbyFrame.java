@@ -149,6 +149,16 @@ public class LobbyFrame extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 Player selectedPlayer = playerList.getSelectedValue();
                 if (selectedPlayer != null && lobbyListener != null) {
+                    // 检查玩家是否正在游戏中
+                    if (selectedPlayer.getStatus() == PlayerStatus.IN_GAME) {
+                        JOptionPane.showMessageDialog(
+                            LobbyFrame.this,
+                            "该玩家正在进行游戏，无法邀请！",
+                            "无法邀请",
+                            JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                    }
                     lobbyListener.onGameInvitation(selectedPlayer);
                 }
             }
@@ -178,9 +188,12 @@ public class LobbyFrame extends JFrame {
         playerList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 Player selectedPlayer = playerList.getSelectedValue();
+                // 只有在线且不在游戏中的玩家才能被邀请
                 boolean canInvite = selectedPlayer != null && 
                                   !selectedPlayer.equals(currentPlayer) &&
-                                  selectedPlayer.getStatus() == PlayerStatus.ONLINE;
+                                  (selectedPlayer.getStatus() == PlayerStatus.ONLINE ||
+                                   selectedPlayer.getStatus() == PlayerStatus.IN_LOBBY) &&
+                                  selectedPlayer.getStatus() != PlayerStatus.IN_GAME;
                 inviteButton.setEnabled(canInvite);
             }
         });
@@ -382,11 +395,20 @@ public class LobbyFrame extends JFrame {
             
             if (value instanceof Player) {
                 Player player = (Player) value;
-                String displayText = player.getUsername() + " (等级: " + player.getRating() + ")";
+                String statusText = "";
+                
+                // 根据玩家状态添加状态标识
+                if (player.getStatus() == PlayerStatus.IN_GAME) {
+                    statusText = " [游戏中]";
+                } else if (player.getStatus() == PlayerStatus.ONLINE || player.getStatus() == PlayerStatus.IN_LOBBY) {
+                    statusText = " [在线]";
+                }
+                
+                String displayText = player.getUsername() + " (等级: " + player.getRating() + ")" + statusText;
                 setText(displayText);
                 
                 // 根据玩家状态设置颜色
-                if (player.getStatus() == PlayerStatus.ONLINE) {
+                if (player.getStatus() == PlayerStatus.ONLINE || player.getStatus() == PlayerStatus.IN_LOBBY) {
                     setForeground(isSelected ? Color.WHITE : Color.BLACK);
                 } else if (player.getStatus() == PlayerStatus.IN_GAME) {
                     setForeground(isSelected ? Color.LIGHT_GRAY : Color.GRAY);

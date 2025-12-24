@@ -116,4 +116,30 @@ public class LobbyFrameTest {
         lobbyFrame.hideLobby();
         assertFalse(lobbyFrame.isVisible());
     }
+    
+    @Test
+    public void testCannotInvitePlayerInGame() {
+        // 创建一个正在游戏中的玩家
+        Player playerInGame = new Player("player1", "PlayerInGame");
+        playerInGame.setStatus(PlayerStatus.IN_GAME);
+        
+        // 创建一个在线玩家
+        Player onlinePlayer = new Player("player2", "OnlinePlayer");
+        onlinePlayer.setStatus(PlayerStatus.ONLINE);
+        
+        // 设置当前玩家
+        Player currentPlayer = new Player("current", "CurrentPlayer");
+        currentPlayer.setStatus(PlayerStatus.ONLINE);
+        lobbyFrame.setCurrentPlayer(currentPlayer);
+        
+        // 更新玩家列表
+        List<Player> players = Arrays.asList(playerInGame, onlinePlayer);
+        lobbyFrame.updatePlayerList(players);
+        
+        // 验证正在游戏中的玩家状态
+        assertEquals(PlayerStatus.IN_GAME, playerInGame.getStatus());
+        
+        // 验证在线玩家状态
+        assertEquals(PlayerStatus.ONLINE, onlinePlayer.getStatus());
+    }
 }
