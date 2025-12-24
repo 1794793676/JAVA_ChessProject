@@ -1,125 +1,172 @@
 # 象棋游戏开发者文档
-# Xiangqi Game Developer Documentation
 
-## 项目概述 / Project Overview
+本文档面向希望了解项目架构、参与开发或扩展功能的开发者。内容涵盖项目结构、核心组件、开发规范、测试策略等方方面面。
 
-这是一个基于Java Swing的网络象棋游戏项目，采用客户端-服务器架构。项目使用Maven进行构建管理，支持多人在线对战和完整的象棋游戏逻辑。
+## 📑 目录
 
-This is a networked Chinese Chess (Xiangqi) game project built with Java Swing using a client-server architecture. The project uses Maven for build management and supports multiplayer online battles with complete chess game logic.
+- [项目概述](#项目概述)
+- [技术架构](#技术架构)
+- [开发环境配置](#开发环境配置)
+- [项目结构详解](#项目结构详解)
+- [核心组件说明](#核心组件说明)
+- [代码规范](#代码规范)
+- [测试策略](#测试策略)
+- [网络协议](#网络协议)
+- [扩展开发](#扩展开发)
+- [性能优化](#性能优化)
+- [调试技巧](#调试技巧)
 
-## 项目结构 / Project Structure
+---
+
+## 项目概述
+
+### 项目简介
+
+这是一个基于Java Swing的网络象棋游戏项目，采用经典的客户端-服务器（C/S）架构。项目使用Maven进行构建管理，支持多人在线对战和完整的象棋游戏逻辑。
+
+### 设计目标
+
+- **模块化设计**：将共享、客户端、服务器分离为独立模块
+- **可扩展性**：易于添加新功能和棋子类型
+- **高性能**：支持多人同时在线对战
+- **可测试性**：完整的单元测试和集成测试覆盖
+- **易维护性**：清晰的代码结构和文档
+
+### 关键特性
+
+- ✅ 完整的中国象棋规则实现
+- ✅ 基于Socket的网络通信
+- ✅ 多线程支持并发连接
+- ✅ 事件驱动的架构设计
+- ✅ 资源管理和缓存机制
+- ✅ 可配置的服务器和客户端参数
+
+---
+
+## 技术架构
+
+### 整体架构
 
 ```
-xiangqi-game/
-├── pom.xml                     # 根POM文件
-├── xiangqi-client/             # 客户端模块
-│   ├── pom.xml
-│   └── src/
-│       ├── main/java/com/xiangqi/client/
-│       └── test/java/com/xiangqi/client/
-├── xiangqi-server/             # 服务器模块
-│   ├── pom.xml
-│   └── src/
-│       ├── main/java/com/xiangqi/server/
-│       └── test/java/com/xiangqi/server/
-├── xiangqi-shared/             # 共享模块
-│   ├── pom.xml
-│   └── src/
-│       ├── main/java/com/xiangqi/shared/
-│       └── test/java/com/xiangqi/shared/
-└── source/                     # 资源文件
-    ├── audio/                  # 音频文件
-    ├── face/                   # 头像图片
-    ├── img/                    # 界面图片
-    └── qizi/                   # 棋子图片
+┌─────────────────────────────────────────────────────────────┐
+│                         用户层                               │
+│              [客户端1] [客户端2] ... [客户端N]               │
+└─────────────┬───────────────────────────────────┬───────────┘
+              │                                   │
+              │  网络通信 (Socket + 自定义协议)    │
+              │                                   │
+┌─────────────▼───────────────────────────────────▼───────────┐
+│                       服务器层                               │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐   │
+│  │ 连接管理器   │  │  游戏会话     │  │  消息路由器     │   │
+│  │             │  │  管理器       │  │                 │   │
+│  └─────────────┘  └──────────────┘  └─────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ 使用共享模块
+                              │
+┌─────────────────────────────▼─────────────────────────────┐
+│                        共享层                              │
+│  ┌──────────┐  ┌───────────┐  ┌───────────┐  ┌────────┐ │
+│  │ 数据模型  │  │ 游戏引擎   │  │ 网络消息   │  │ 工具类 │ │
+│  └──────────┘  └───────────┘  └───────────┘  └────────┘ │
+└───────────────────────────────────────────────────────────┘
 ```
 
-## 架构设计 / Architecture Design
+### 模块依赖关系
 
-### 模块划分 / Module Division
+```
+xiangqi-client ────依赖────> xiangqi-shared
+                            ▲
+xiangqi-server ────依赖────┘
+```
 
-1. **xiangqi-shared**: 共享组件
-   - 游戏数据模型
-   - 网络消息定义
-   - 象棋引擎和规则
-   - 通用工具类
+### 技术栈详情
 
-2. **xiangqi-server**: 服务器端
-   - 网络连接管理
-   - 游戏会话管理
-   - 消息路由和处理
-   - 多线程并发控制
+| 层次 | 技术 | 说明 |
+|------|------|------|
+| **编程语言** | Java 21 | 使用最新LTS版本 |
+| **构建工具** | Maven 3.x | 多模块项目管理 |
+| **UI框架** | Swing | 跨平台GUI框架 |
+| **网络通信** | Socket + ObjectStream | 自定义协议 |
+| **并发处理** | ExecutorService | 线程池管理 |
+| **测试框架** | JUnit 5 | 单元测试 |
+| **属性测试** | QuickCheck | 属性驱动测试 |
+| **序列化** | Java Serialization | 对象传输 |
 
-3. **xiangqi-client**: 客户端
-   - 用户界面组件
-   - 网络通信客户端
-   - 多媒体资源管理
-   - 用户交互处理
+---
 
-### 核心组件 / Core Components
+## 开发环境配置
 
-#### 1. 游戏引擎 (Game Engine)
+### 必需工具
 
-**ChessEngine**: 核心象棋引擎
-- 移动验证和执行
-- 游戏状态管理
-- 将军/将死检测
-- 规则执行
+| 工具 | 最低版本 | 推荐版本 | 用途 |
+|------|----------|----------|------|
+| **JDK** | 21 | 21+ | Java开发环境 |
+| **Maven** | 3.6 | 3.9+ | 项目构建工具 |
+| **IDE** | - | IntelliJ IDEA / Eclipse | 代码编辑 |
+| **Git** | 2.x | 最新版 | 版本控制 |
 
-**RuleValidator**: 规则验证器
-- 各种棋子移动规则
-- 特殊规则处理
-- 移动合法性检查
+### IDE配置
 
-#### 2. 网络通信 (Network Communication)
+#### IntelliJ IDEA（推荐）
 
-**NetworkMessage**: 网络消息基类
-- 消息序列化/反序列化
-- 消息类型定义
-- 消息路由机制
+1. **导入项目**
+   ```
+   File → Open → 选择项目根目录的pom.xml
+   ```
 
-**GameServer**: 游戏服务器
-- 客户端连接管理
-- 多线程处理
-- 游戏会话管理
+2. **配置JDK**
+   ```
+   File → Project Structure → Project
+   SDK: 选择 JDK 21
+   Language Level: 21
+   ```
 
-**NetworkClient**: 网络客户端
-- 服务器连接
-- 消息发送/接收
-- 断线重连
+3. **配置Maven**
+   ```
+   File → Settings → Build, Execution, Deployment → Build Tools → Maven
+   Maven home directory: 指向Maven安装目录
+   User settings file: 指向settings.xml
+   ```
 
-#### 3. 用户界面 (User Interface)
+4. **启用注解处理**
+   ```
+   File → Settings → Build, Execution, Deployment → Compiler → Annotation Processors
+   勾选"Enable annotation processing"
+   ```
 
-**LoginFrame**: 登录界面
-- 用户认证
-- 服务器连接
-- 错误处理
+5. **代码风格**
+   ```
+   File → Settings → Editor → Code Style → Java
+   导入项目提供的代码风格配置文件(如果有)
+   ```
 
-**LobbyFrame**: 游戏大厅
-- 玩家列表
-- 游戏邀请
-- 实时更新
+#### Eclipse配置
 
-**GameFrame**: 游戏界面
-- 棋盘显示
-- 移动交互
-- 游戏控制
+1. **导入Maven项目**
+   ```
+   File → Import → Maven → Existing Maven Projects
+   ```
 
-## 开发环境设置 / Development Environment Setup
+2. **设置JDK**
+   ```
+   Window → Preferences → Java → Installed JREs
+   添加JDK 21
+   ```
 
-### 必需工具 / Required Tools
+3. **Maven设置**
+   ```
+   Window → Preferences → Maven
+   配置Maven installation和User Settings
+   ```
 
-- **JDK 8+**: Java开发工具包
-- **Maven 3.6+**: 构建工具
-- **IDE**: IntelliJ IDEA 或 Eclipse
-- **Git**: 版本控制
-
-### 构建项目 / Building the Project
+### 项目克隆和构建
 
 ```bash
-# 克隆项目
+# 克隆项目（如果使用Git）
 git clone <repository-url>
-cd xiangqi-game
+cd JAVA_ChessProject
 
 # 编译所有模块
 mvn clean compile
@@ -127,246 +174,636 @@ mvn clean compile
 # 运行测试
 mvn test
 
-# 打包项目
+# 打包项目（生成JAR文件）
 mvn package
 
-# 安装到本地仓库
+# 安装到本地Maven仓库
 mvn install
+
+# 跳过测试快速构建
+mvn clean package -DskipTests
 ```
 
-### 运行项目 / Running the Project
+### 常用Maven命令
 
-#### 启动服务器 / Start Server
 ```bash
-cd xiangqi-server
-mvn exec:java -Dexec.mainClass="com.xiangqi.server.ServerMain"
-# 或者
-java -jar target/xiangqi-server-1.0.jar
+# 清理构建产物
+mvn clean
+
+# 仅编译源代码
+mvn compile
+
+# 编译测试代码
+mvn test-compile
+
+# 运行所有测试
+mvn test
+
+# 运行特定测试类
+mvn test -Dtest=ChessEngineTest
+
+# 运行特定模块的测试
+mvn test -pl xiangqi-shared
+
+# 查看依赖树
+mvn dependency:tree
+
+# 更新依赖
+mvn clean install -U
+
+# 生成项目站点
+mvn site
 ```
 
-#### 启动客户端 / Start Client
-```bash
-cd xiangqi-client
-mvn exec:java -Dexec.mainClass="com.xiangqi.client.ClientMain"
-# 或者
-java -jar target/xiangqi-client-1.0.jar
+---
+
+## 项目结构详解
+
+### 目录结构说明
+
+```
+JAVA_ChessProject/
+├── pom.xml                     # 父POM，定义全局配置和依赖管理
+├── build.bat                   # Windows构建脚本
+├── start-server.bat            # 服务器启动脚本
+├── start-client.bat            # 客户端启动脚本
+├── server.properties           # 服务器配置
+├── client.properties           # 客户端配置
+├── docs/                       # 项目文档目录
+│   ├── *.md                    # 各类文档
+│
+├── xiangqi-shared/             # 共享模块 - 被客户端和服务器依赖
+│   ├── pom.xml                 # 模块POM配置
+│   ├── src/
+│   │   ├── main/
+│   │   │   └── java/com/xiangqi/shared/
+│   │   │       ├── model/      # 数据模型包
+│   │   │       │   ├── Player.java
+│   │   │       │   ├── Position.java
+│   │   │       │   ├── ChessPiece.java
+│   │   │       │   ├── Move.java
+│   │   │       │   ├── GameState.java
+│   │   │       │   └── GameResult.java
+│   │   │       │
+│   │   │       ├── network/    # 网络通信包
+│   │   │       │   ├── NetworkMessage.java
+│   │   │       │   ├── MessageType.java
+│   │   │       │   ├── LoginMessage.java
+│   │   │       │   ├── MoveMessage.java
+│   │   │       │   └── ...
+│   │   │       │
+│   │   │       └── engine/     # 游戏引擎包
+│   │   │           ├── ChessEngine.java
+│   │   │           ├── RuleValidator.java
+│   │   │           └── GameEventListener.java
+│   │   │
+│   │   └── test/               # 单元测试
+│   │       └── java/com/xiangqi/shared/
+│   │
+│   └── target/                 # Maven构建输出目录
+│
+├── xiangqi-server/             # 服务器模块
+│   ├── pom.xml
+│   ├── src/
+│   │   ├── main/
+│   │   │   └── java/com/xiangqi/server/
+│   │   │       ├── ServerMain.java         # 服务器主入口
+│   │   │       └── network/                # 网络服务包
+│   │   │           ├── GameServer.java     # 核心服务器类
+│   │   │           ├── ClientHandler.java  # 客户端连接处理
+│   │   │           └── GameSession.java    # 游戏会话管理
+│   │   │
+│   │   └── test/               # 单元测试
+│   │
+│   └── target/                 # 构建输出
+│
+├── xiangqi-client/             # 客户端模块
+│   ├── pom.xml
+│   ├── src/
+│   │   ├── main/
+│   │   │   └── java/com/xiangqi/client/
+│   │   │       ├── ClientMain.java         # 客户端主入口
+│   │   │       │
+│   │   │       ├── ui/                     # 用户界面包
+│   │   │       │   ├── LoginFrame.java     # 登录界面
+│   │   │       │   ├── LobbyFrame.java     # 游戏大厅
+│   │   │       │   ├── GameFrame.java      # 游戏主界面
+│   │   │       │   └── ChessBoardPanel.java # 棋盘面板
+│   │   │       │
+│   │   │       ├── network/                # 网络客户端包
+│   │   │       │   └── NetworkClient.java  # 网络通信客户端
+│   │   │       │
+│   │   │       └── multimedia/             # 多媒体包
+│   │   │           ├── AudioManager.java   # 音频管理
+│   │   │           └── ResourceManager.java # 资源管理
+│   │   │
+│   │   └── test/               # 单元测试
+│   │
+│   └── target/                 # 构建输出
+│
+└── source/                     # 游戏资源文件
+    ├── audio/                  # 音效文件 (.wav)
+    │   ├── move.wav
+    │   ├── capture.wav
+    │   ├── check.wav
+    │   └── ...
+    │
+    ├── face/                   # 玩家头像 (.gif)
+    │   └── *.gif
+    │
+    ├── img/                    # UI图片 (.gif)
+    │   └── *.gif
+    │
+    └── qizi/                   # 棋子图片 (.gif)
+        ├── r_jiang.gif         # 红方将
+        ├── r_che.gif           # 红方车
+        ├── b_jiang.gif         # 黑方将
+        └── ...
 ```
 
-## 代码规范 / Coding Standards
+### 包命名规范
 
-### Java编码规范 / Java Coding Standards
+- `com.xiangqi.shared.model` - 数据模型类
+- `com.xiangqi.shared.network` - 网络消息类
+- `com.xiangqi.shared.engine` - 游戏引擎和规则
+- `com.xiangqi.server.network` - 服务器网络层
+- `com.xiangqi.client.ui` - 客户端界面
+- `com.xiangqi.client.network` - 客户端网络层
+- `com.xiangqi.client.multimedia` - 客户端多媒体
 
-1. **命名规范**:
-   - 类名：PascalCase (如 `GameEngine`)
-   - 方法名：camelCase (如 `validateMove`)
-   - 常量：UPPER_SNAKE_CASE (如 `MAX_CONNECTIONS`)
-   - 包名：小写，用点分隔 (如 `com.xiangqi.shared.model`)
+---
 
-2. **注释规范**:
-   - 所有公共类和方法必须有Javadoc注释
-   - 复杂逻辑需要行内注释说明
-   - 中英文注释并存，便于国际化
+## 核心组件说明
 
-3. **代码格式**:
-   - 使用4个空格缩进
-   - 行长度不超过120字符
-   - 大括号采用K&R风格
+### 共享模块 (xiangqi-shared)
 
-### 设计模式 / Design Patterns
+#### 1. 数据模型 (model包)
 
-项目中使用的主要设计模式：
+**Player.java - 玩家类**
 
-1. **单例模式**: ResourceManager, AudioManager
-2. **工厂模式**: PieceFactory, MessageFactory
-3. **观察者模式**: GameEventListener
-4. **策略模式**: 各种棋子的移动策略
-5. **命令模式**: 网络消息处理
+```java
+public class Player implements Serializable {
+    private String id;              // 唯一标识
+    private String username;        // 用户名
+    private PlayerStatus status;    // 玩家状态
+    private int rating;            // 等级分
+    private PlayerStatistics stats; // 统计数据
+    
+    // 构造方法、getter/setter、业务方法
+}
+```
 
-## 测试策略 / Testing Strategy
+**Position.java - 位置类**
 
-### 测试框架 / Testing Frameworks
+```java
+public class Position implements Serializable {
+    private int row;    // 行 (0-9)
+    private int col;    // 列 (0-8)
+    
+    // 验证位置是否合法（10x9棋盘）
+    public boolean isValid() {
+        return row >= 0 && row < 10 && col >= 0 && col < 9;
+    }
+}
+```
 
-- **JUnit 5**: 单元测试框架
-- **junit-quickcheck**: 基于属性的测试
-- **Mockito**: 模拟对象框架
+**ChessPiece.java - 棋子抽象类**
 
-### 测试类型 / Test Types
+```java
+public abstract class ChessPiece implements Serializable {
+    protected PieceType type;      // 棋子类型
+    protected Side side;           // 红方/黑方
+    protected Position position;   // 当前位置
+    
+    // 抽象方法：获取所有合法移动
+    public abstract List<Position> getValidMoves(GameState state);
+    
+    // 抽象方法：验证移动是否合法
+    public abstract boolean isValidMove(Position target, GameState state);
+}
+```
 
-1. **单元测试**: 测试单个类或方法
-2. **集成测试**: 测试组件间交互
-3. **属性测试**: 验证通用属性和不变量
-4. **网络测试**: 测试客户端-服务器通信
+**GameState.java - 游戏状态类**
 
-### 运行测试 / Running Tests
+```java
+public class GameState implements Serializable {
+    private ChessPiece[][] board;   // 棋盘 [10][9]
+    private Side currentPlayer;     // 当前玩家
+    private GameStatus status;      // 游戏状态
+    private List<Move> moveHistory; // 移动历史
+    private Player redPlayer;       // 红方玩家
+    private Player blackPlayer;     // 黑方玩家
+    
+    // 深度拷贝，用于模拟移动
+    public GameState deepCopy();
+    
+    // 执行移动
+    public void executeMove(Move move);
+    
+    // 撤销移动
+    public void undoMove();
+}
+```
+
+#### 2. 网络通信 (network包)
+
+**NetworkMessage.java - 消息基类**
+
+```java
+public abstract class NetworkMessage implements Serializable {
+    protected MessageType type;     // 消息类型
+    protected String senderId;      // 发送者ID
+    protected long timestamp;       // 时间戳
+    
+    public abstract void process(NetworkMessageHandler handler);
+}
+```
+
+**MessageType枚举 - 消息类型**
+
+```java
+public enum MessageType {
+    // 认证相关
+    LOGIN_REQUEST,
+    LOGIN_RESPONSE,
+    LOGOUT,
+    
+    // 游戏大厅
+    LOBBY_UPDATE,
+    PLAYER_LIST,
+    GAME_INVITATION,
+    INVITATION_RESPONSE,
+    
+    // 游戏对弈
+    MOVE_MESSAGE,
+    MOVE_RESPONSE,
+    GAME_START,
+    GAME_END,
+    
+    // 其他
+    CHAT_MESSAGE,
+    HEARTBEAT,
+    ERROR_MESSAGE
+}
+```
+
+#### 3. 游戏引擎 (engine包)
+
+**ChessEngine.java - 游戏引擎**
+
+```java
+public class ChessEngine {
+    private GameState gameState;
+    private RuleValidator ruleValidator;
+    private List<GameEventListener> listeners;
+    
+    // 执行移动
+    public boolean makeMove(Move move) {
+        if (ruleValidator.isValidMove(move, gameState)) {
+            gameState.executeMove(move);
+            notifyListeners(GameEvent.MOVE_MADE, move);
+            
+            // 检查将军、将死
+            if (isCheck(gameState.getCurrentPlayer())) {
+                if (isCheckmate(gameState.getCurrentPlayer())) {
+                    gameState.setStatus(GameStatus.CHECKMATE);
+                    notifyListeners(GameEvent.CHECKMATE, null);
+                } else {
+                    gameState.setStatus(GameStatus.CHECK);
+                    notifyListeners(GameEvent.CHECK, null);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    // 检查是否将军
+    public boolean isCheck(Side side);
+    
+    // 检查是否将死
+    public boolean isCheckmate(Side side);
+}
+```
+
+### 服务器模块 (xiangqi-server)
+
+#### GameServer.java - 核心服务器类
+
+```java
+public class GameServer implements NetworkMessageHandler {
+    private ServerSocket serverSocket;
+    private ExecutorService threadPool;
+    private Map<String, ClientHandler> clients;
+    private Map<String, GameSession> gameSessions;
+    private Properties config;
+    
+    // 启动服务器
+    public void start(int port) {
+        serverSocket = new ServerSocket(port);
+        threadPool = Executors.newFixedThreadPool(config.getThreadPoolSize());
+        
+        // 监听客户端连接
+        while (running) {
+            Socket clientSocket = serverSocket.accept();
+            ClientHandler handler = new ClientHandler(clientSocket, this);
+            threadPool.execute(handler);
+        }
+    }
+    
+    // 处理客户端消息
+    @Override
+    public void handleMessage(NetworkMessage message, ClientHandler client) {
+        switch (message.getType()) {
+            case LOGIN_REQUEST:
+                handleLogin((LoginMessage) message, client);
+                break;
+            case MOVE_MESSAGE:
+                handleMove((MoveMessage) message, client);
+                break;
+            // ... 其他消息类型
+        }
+    }
+    
+    // 广播消息给所有客户端
+    public void broadcast(NetworkMessage message);
+    
+    // 发送消息给特定客户端
+    public void sendToClient(String clientId, NetworkMessage message);
+}
+```
+
+#### ClientHandler.java - 客户端连接处理
+
+```java
+public class ClientHandler implements Runnable {
+    private Socket socket;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
+    private GameServer server;
+    private Player player;
+    private boolean connected;
+    
+    @Override
+    public void run() {
+        try {
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+            
+            // 持续接收消息
+            while (connected) {
+                NetworkMessage message = (NetworkMessage) in.readObject();
+                server.handleMessage(message, this);
+            }
+        } catch (Exception e) {
+            handleDisconnect();
+        }
+    }
+    
+    // 发送消息
+    public void sendMessage(NetworkMessage message) {
+        synchronized (out) {
+            out.writeObject(message);
+            out.flush();
+        }
+    }
+}
+```
+
+### 客户端模块 (xiangqi-client)
+
+#### NetworkClient.java - 网络客户端
+
+```java
+public class NetworkClient {
+    private Socket socket;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
+    private MessageListener messageListener;
+    private boolean connected;
+    
+    // 连接服务器
+    public boolean connect(String host, int port) {
+        try {
+            socket = new Socket(host, port);
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+            connected = true;
+            
+            // 启动消息接收线程
+            new Thread(this::receiveMessages).start();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+    
+    // 发送消息
+    public void sendMessage(NetworkMessage message) {
+        synchronized (out) {
+            out.writeObject(message);
+            out.flush();
+        }
+    }
+    
+    // 接收消息线程
+    private void receiveMessages() {
+        while (connected) {
+            NetworkMessage message = (NetworkMessage) in.readObject();
+            messageListener.onMessageReceived(message);
+        }
+    }
+}
+```
+
+#### UI组件
+
+**LoginFrame, LobbyFrame, GameFrame** 等Swing组件负责用户界面展示和交互。
+
+**ResourceManager** 管理图片资源缓存，**AudioManager** 处理音效播放。
+
+---
+
+## 代码规范
+
+### 命名规范
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 类名 | PascalCase | `GameEngine`, `ChessPiece` |
+| 接口 | PascalCase | `GameEventListener`, `NetworkMessageHandler` |
+| 方法 | camelCase | `makeMove()`, `isValidMove()` |
+| 变量 | camelCase | `gameState`, `currentPlayer` |
+| 常量 | UPPER_SNAKE_CASE | `MAX_PLAYERS`, `DEFAULT_PORT` |
+| 包名 | 小写+点分隔 | `com.xiangqi.shared.model` |
+
+### 注释规范
+
+```java
+/**
+ * 象棋引擎类，负责游戏逻辑处理
+ * Chess engine class responsible for game logic
+ *
+ * @author 作者名
+ * @version 1.0.0
+ * @since 2024-12-24
+ */
+public class ChessEngine {
+    
+    /**
+     * 执行一步棋
+     * Execute a chess move
+     *
+     * @param move 要执行的移动
+     * @return 是否成功执行
+     * @throws IllegalArgumentException 如果移动不合法
+     */
+    public boolean makeMove(Move move) {
+        // 实现代码
+    }
+}
+```
+
+### 代码格式
+
+- 使用4个空格缩进（不使用Tab）
+- 行长度不超过120字符
+- 大括号采用K&R风格（左大括号不换行）
+- 方法之间空一行
+- 逻辑块之间空一行
+
+---
+
+## 测试策略
+
+### 单元测试示例
+
+```java
+@Test
+public void testPositionValidation() {
+    // 合法位置
+    assertTrue(new Position(0, 0).isValid());
+    assertTrue(new Position(9, 8).isValid());
+    
+    // 非法位置
+    assertFalse(new Position(-1, 0).isValid());
+    assertFalse(new Position(10, 0).isValid());
+    assertFalse(new Position(0, 9).isValid());
+}
+```
+
+### 运行测试
 
 ```bash
 # 运行所有测试
 mvn test
 
-# 运行特定模块测试
+# 运行特定模块
 mvn test -pl xiangqi-shared
-
-# 运行特定测试类
-mvn test -Dtest=ChessEngineTest
 
 # 生成测试报告
 mvn surefire-report:report
 ```
 
-## 网络协议 / Network Protocol
+---
 
-### 消息格式 / Message Format
+## 网络协议
 
-所有网络消息都继承自 `NetworkMessage` 基类：
+### 消息格式
 
-```java
-public abstract class NetworkMessage implements Serializable {
-    protected MessageType type;
-    protected String senderId;
-    protected long timestamp;
-}
-```
+所有消息继承自`NetworkMessage`，通过Java序列化传输。
 
-### 消息类型 / Message Types
-
-- `LOGIN_REQUEST` / `LOGIN_RESPONSE`: 登录相关
-- `GAME_INVITATION` / `INVITATION_RESPONSE`: 游戏邀请
-- `MOVE_MESSAGE` / `MOVE_RESPONSE`: 移动消息
-- `CHAT_MESSAGE`: 聊天消息
-- `GAME_END_MESSAGE`: 游戏结束
-- `HEARTBEAT_MESSAGE`: 心跳消息
-
-### 通信流程 / Communication Flow
+### 通信流程
 
 1. 客户端连接服务器
-2. 发送登录请求
-3. 服务器验证并响应
-4. 进入游戏大厅，接收更新
-5. 游戏过程中交换移动消息
-6. 游戏结束，更新统计信息
+2. 发送`LOGIN_REQUEST`
+3. 服务器验证并返回`LOGIN_RESPONSE`
+4. 进入大厅，接收`LOBBY_UPDATE`
+5. 游戏中交换`MOVE_MESSAGE`
+6. 游戏结束发送`GAME_END`消息
 
-## 性能优化 / Performance Optimization
+---
 
-### 客户端优化 / Client Optimization
+## 扩展开发
 
-1. **资源缓存**: 预加载图片和音频资源
-2. **UI优化**: 使用双缓冲减少闪烁
-3. **网络优化**: 消息批处理和压缩
-4. **内存管理**: 及时释放不用的资源
+### 添加新棋子
 
-### 服务器优化 / Server Optimization
+1. 继承`ChessPiece`类
+2. 实现`getValidMoves()`方法
+3. 在`PieceFactory`中注册
+4. 添加对应图片资源
 
-1. **线程池**: 使用线程池处理并发连接
-2. **连接管理**: 及时清理断开的连接
-3. **消息队列**: 异步处理消息
-4. **负载均衡**: 分散游戏会话负载
+### 添加新消息类型
 
-## 扩展开发 / Extension Development
+1. 在`MessageType`枚举中添加类型
+2. 创建新的消息类继承`NetworkMessage`
+3. 在服务器和客户端的消息处理器中添加处理逻辑
 
-### 添加新棋子类型 / Adding New Piece Types
+---
 
-1. 继承 `ChessPiece` 抽象类
-2. 实现 `getValidMoves()` 方法
-3. 在 `PieceFactory` 中注册
-4. 添加对应的图形资源
+## 性能优化
 
-### 添加新消息类型 / Adding New Message Types
+### 客户端优化
+- 预加载和缓存图片资源
+- 使用双缓冲技术减少界面闪烁
+- 异步处理网络消息
 
-1. 继承 `NetworkMessage` 基类
-2. 在 `MessageType` 枚举中添加类型
-3. 在消息处理器中添加处理逻辑
-4. 更新客户端和服务器代码
+### 服务器优化
+- 使用线程池管理并发连接
+- 及时清理断开的连接
+- 消息批处理和异步处理
 
-### 添加新界面组件 / Adding New UI Components
+---
 
-1. 继承适当的Swing组件
-2. 实现必要的事件监听器
-3. 集成到主界面框架中
-4. 添加相应的测试用例
+## 调试技巧
 
-## 调试和故障排除 / Debugging and Troubleshooting
-
-### 日志配置 / Logging Configuration
-
-项目使用Java标准日志框架：
-
-```java
-private static final Logger logger = Logger.getLogger(ClassName.class.getName());
-```
-
-### 调试技巧 / Debugging Tips
-
-1. **网络调试**: 启用网络消息日志
-2. **游戏状态**: 输出游戏状态快照
-3. **性能分析**: 使用JProfiler或类似工具
-4. **内存分析**: 监控内存使用情况
-
-### 常见问题 / Common Issues
-
-1. **并发问题**: 使用同步机制保护共享资源
-2. **内存泄漏**: 及时关闭流和连接
-3. **网络超时**: 设置合适的超时时间
-4. **UI冻结**: 避免在EDT中执行长时间操作
-
-## 部署指南 / Deployment Guide
-
-### 打包发布 / Packaging for Release
+### 启用调试日志
 
 ```bash
-# 创建可执行JAR
-mvn clean package
+# 客户端
+java -jar xiangqi-client.jar -d
 
-# 创建包含依赖的JAR
-mvn assembly:assembly
-
-# 生成发布包
-mvn clean package assembly:single
+# 服务器
+java -jar xiangqi-server.jar -d
 ```
 
-### 部署配置 / Deployment Configuration
+### 常见问题
+- 并发问题：使用`synchronized`或`Lock`
+- 内存泄漏：及时关闭资源
+- 网络超时：设置合理的超时时间
 
-1. **服务器部署**:
-   - 配置防火墙开放端口
-   - 设置适当的JVM参数
-   - 配置日志轮转
+---
 
-2. **客户端分发**:
-   - 创建安装程序
-   - 包含必要的资源文件
-   - 提供配置文件模板
+## 版本控制
 
-## 版本控制 / Version Control
+### Git工作流
 
-### Git工作流 / Git Workflow
+- `main` - 稳定版本
+- `develop` - 开发版本
+- `feature/*` - 新功能
+- `hotfix/*` - 紧急修复
 
-1. **主分支**: `main` - 稳定版本
-2. **开发分支**: `develop` - 开发版本
-3. **功能分支**: `feature/*` - 新功能开发
-4. **修复分支**: `hotfix/*` - 紧急修复
-
-### 提交规范 / Commit Convention
+### 提交规范
 
 ```
-type(scope): description
+type(scope): subject
 
 feat: 新功能
 fix: 修复bug
 docs: 文档更新
-style: 代码格式
 refactor: 重构
 test: 测试相关
-chore: 构建工具等
 ```
-
-## 贡献指南 / Contributing Guidelines
-
-1. Fork项目到个人仓库
-2. 创建功能分支
-3. 编写代码和测试
-4. 提交Pull Request
-5. 代码审查和合并
 
 ---
 
-更多详细信息请参考项目Wiki或联系开发团队。
-For more detailed information, please refer to the project Wiki or contact the development team.
+## 相关文档
+
+- [README.md](README.md) - 项目概述
+- [QUICK_START.md](QUICK_START.md) - 快速启动
+- [USER_GUIDE.md](USER_GUIDE.md) - 用户手册
+- [CONFIG_README.md](CONFIG_README.md) - 配置说明
+
+---
+
+**祝开发顺利！** 🚀
